@@ -13,10 +13,10 @@ ENV NODE_ENV=production
 RUN apk add --no-cache openssl
 COPY package*.json ./
 RUN npm ci --omit=dev
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY prisma ./prisma
 COPY prisma.config.ts ./
+RUN DATABASE_URL=postgresql://placeholder:placeholder@localhost/placeholder npx prisma generate
+COPY --from=builder /app/dist ./dist
 COPY docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 EXPOSE 4000
