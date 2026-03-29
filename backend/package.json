@@ -16,7 +16,7 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
-    "@prisma/client": "^5.14.0",
+    "@prisma/client": "^7.6.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "express": "^4.19.2",
@@ -31,7 +31,7 @@
     "@types/node": "^20.14.9",
     "@types/supertest": "^6.0.2",
     "@vitest/coverage-v8": "^4.1.2",
-    "prisma": "^5.14.0",
+    "prisma": "^7.6.0",
     "supertest": "^7.0.0",
     "tsx": "^4.16.0",
     "typescript": "^5.5.2",
