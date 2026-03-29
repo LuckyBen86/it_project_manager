@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  responsable
+  utilisateur
+}
+
+enum StatutProjet {
+  non_valide
+  a_planifier
+  planifie
+  en_cours
+  termine
+}
+
+enum StatutTache {
+  a_faire
+  en_cours
+  termine
+}
+
+enum TypeCategorie {
+  projet
+  tache
+}
+
+model Ressource {
+  id           String     @id @default(uuid())
+  nom          String
+  email        String     @unique
+  passwordHash String     @map("password_hash")
+  role         Role       @default(utilisateur)
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  projetsResponsable Projet[]        @relation("ResponsableProjet")
+  activites          Activite[]
+  taches             TacheRessource[]
+
+  @@map("ressources")
+}
+
+model Categorie {
+  id      String        @id @default(uuid())
+  nom     String
+  type    TypeCategorie
+
+  projets Projet[]
+  taches  Tache[]
+
+  @@unique([nom, type])
+  @@map("categories")
+}
+
+model Projet {
+  id            String       @id @default(uuid())
+  titre         String
+  description   String?
+  categorieId   String?      @map("categorie_id")
+  responsableId String       @map("responsable_id")
+  dateButoire   DateTime?    @map("date_butoire")
+  dateDebut     DateTime?    @map("date_debut")
+  duree         Int?
+  statut        StatutProjet @default(non_valide)
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  categorie   Categorie?  @relation(fields: [categorieId], references: [id])
+  responsable Ressource   @relation("ResponsableProjet", fields: [responsableId], references: [id])
+  taches      Tache[]
+
+  @@map("projets")
+}
+
+model Tache {
+  id          String      @id @default(uuid())
+  projetId    String      @map("projet_id")
+  titre       String
+  description String?
+  categorieId String?     @map("categorie_id")
+  dateDebut   DateTime?   @map("date_debut")
+  duree       Int?
+  statut      StatutTache @default(a_faire)
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  projet      Projet            @relation(fields: [projetId], references: [id], onDelete: Cascade)
+  categorie   Categorie?        @relation(fields: [categorieId], references: [id])
+  ressources  TacheRessource[]
+  dependances TacheDependance[] @relation("TacheDependances")
+  precedents  TacheDependance[] @relation("TachePrecedents")
+  activites   Activite[]
+
+  @@map("taches")
+}
+
+model TacheDependance {
+  tacheId     String @map("tache_id")
+  precedentId String @map("precedent_id")
+
+  tache     Tache @relation("TacheDependances", fields: [tacheId], references: [id], onDelete: Cascade)
+  precedent Tache @relation("TachePrecedents", fields: [precedentId], references: [id], onDelete: Cascade)
+
+  @@id([tacheId, precedentId])
+  @@map("tache_dependances")
+}
+
+model TacheRessource {
+  tacheId     String @map("tache_id")
+  ressourceId String @map("ressource_id")
+
+  tache     Tache     @relation(fields: [tacheId], references: [id], onDelete: Cascade)
+  ressource Ressource @relation(fields: [ressourceId], references: [id], onDelete: Cascade)
+
+  @@id([tacheId, ressourceId])
+  @@map("tache_ressources")
+}
+
+model Activite {
+  id          String    @id @default(uuid())
+  description String
+  date        DateTime
+  duree       Int
+  ressourceId String    @map("ressource_id")
+  tacheId     String?   @map("tache_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  ressource Ressource @relation(fields: [ressourceId], references: [id])
+  tache     Tache?    @relation(fields: [tacheId], references: [id], onDelete: Cascade)
+
+  @@map("activites")
+}
