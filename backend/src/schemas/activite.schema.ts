@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const createActiviteSchema = z.object({
   description: z.string().min(1, 'Description requise'),
   date: z.string().datetime(),
-  duree: z.number().int().positive(),
+  duree: z.number().positive().multipleOf(0.01),
   ressourceId: z.string().uuid('ID ressource invalide'),
   tacheId: z.string().uuid().optional(),
 });

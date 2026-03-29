@@ -125,7 +125,7 @@ model Activite {
   id          String    @id @default(uuid())
   description String
   date        DateTime
-  duree       Int
+  duree       Float
   ressourceId String    @map("ressource_id")
   tacheId     String?   @map("tache_id")
   createdAt   DateTime  @default(now()) @map("created_at")

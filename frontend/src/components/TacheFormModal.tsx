@@ -27,7 +27,7 @@ type TacheForm = z.infer<typeof tacheSchema>;
 const activiteSchema = z.object({
   description: z.string().min(1, 'Description requise'),
   date: z.string().min(1, 'Date requise'),
-  duree: z.number().int().positive('Durée > 0'),
+  duree: z.number().positive('Durée > 0').multipleOf(0.01),
   ressourceId: z.string().uuid('Ressource requise'),
 });
 
@@ -278,13 +278,14 @@ export default function TacheFormModal({ open, onClose, onSaved, projetId, tache
                 <FormField label="Date" error={errorsAct.date?.message} required>
                   <input type="date" className={inputClass} {...registerAct('date')} />
                 </FormField>
-                <FormField label="Durée (h)" error={errorsAct.duree?.message} required>
+                <FormField label="Durée (jours)" error={errorsAct.duree?.message} required>
                   <input
                     type="number"
-                    min={1}
+                    min={0.01}
+                    step={0.01}
                     className={inputClass}
                     {...registerAct('duree', { setValueAs: (v: string) => Number(v) })}
-                    placeholder="ex: 2"
+                    placeholder="ex: 0.5"
                   />
                 </FormField>
               </div>
@@ -326,7 +327,7 @@ export default function TacheFormModal({ open, onClose, onSaved, projetId, tache
                     <p className="text-xs font-medium text-gray-800">{act.description}</p>
                     <div className="flex gap-3 mt-0.5 text-xs text-gray-400">
                       <span>{format(new Date(act.date), 'dd MMM yyyy', { locale: fr })}</span>
-                      <span>{act.duree} h</span>
+                      <span>{act.duree} j</span>
                       <span>{act.ressource.nom}</span>
                     </div>
                   </div>
