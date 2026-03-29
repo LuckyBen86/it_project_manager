@@ -1,4 +1,4 @@
-import { Router, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma.js';
 import { authenticate, requireRole, AuthRequest } from '../middleware/auth.middleware.js';
 import { validate } from '../middleware/validate.middleware.js';
@@ -32,7 +32,7 @@ router.get('/', async (_req, res: Response): Promise<void> => {
 });
 
 // GET /projets/:id
-router.get('/:id', async (req, res: Response): Promise<void> => {
+router.get('/:id', async (req: Request<{ id: string }>, res: Response): Promise<void> => {
   const projet = await prisma.projet.findUnique({
     where: { id: req.params.id },
     include: PROJET_INCLUDE,
@@ -52,7 +52,7 @@ router.post('/', requireRole('responsable'), validate(createProjetSchema), async
 });
 
 // PATCH /projets/:id — responsable uniquement
-router.patch('/:id', requireRole('responsable'), validate(updateProjetSchema), async (req, res: Response): Promise<void> => {
+router.patch('/:id', requireRole('responsable'), validate(updateProjetSchema), async (req: Request<{ id: string }>, res: Response): Promise<void> => {
   const existing = await prisma.projet.findUnique({ where: { id: req.params.id } });
   if (!existing) { res.status(404).json({ message: 'Projet introuvable' }); return; }
 
@@ -65,7 +65,7 @@ router.patch('/:id', requireRole('responsable'), validate(updateProjetSchema), a
 });
 
 // PATCH /projets/:id/gantt — déplace/redimensionne dans la vue Gantt (responsable)
-router.patch('/:id/gantt', requireRole('responsable'), validate(updateGanttSchema), async (req, res: Response): Promise<void> => {
+router.patch('/:id/gantt', requireRole('responsable'), validate(updateGanttSchema), async (req: Request<{ id: string }>, res: Response): Promise<void> => {
   const existing = await prisma.projet.findUnique({ where: { id: req.params.id } });
   if (!existing) { res.status(404).json({ message: 'Projet introuvable' }); return; }
 
@@ -78,7 +78,7 @@ router.patch('/:id/gantt', requireRole('responsable'), validate(updateGanttSchem
 });
 
 // DELETE /projets/:id — responsable uniquement (cascade tâches via Prisma schema)
-router.delete('/:id', requireRole('responsable'), async (req, res: Response): Promise<void> => {
+router.delete('/:id', requireRole('responsable'), async (req: Request<{ id: string }>, res: Response): Promise<void> => {
   const existing = await prisma.projet.findUnique({ where: { id: req.params.id } });
   if (!existing) { res.status(404).json({ message: 'Projet introuvable' }); return; }
 

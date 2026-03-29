@@ -1,4 +1,4 @@
-import { Router, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma.js';
 import { authenticate, requireRole } from '../middleware/auth.middleware.js';
 import { validate } from '../middleware/validate.middleware.js';
@@ -29,7 +29,7 @@ router.post('/', requireRole('responsable'), validate(createCategorieSchema), as
 });
 
 // PATCH /categories/:id — responsable uniquement
-router.patch('/:id', requireRole('responsable'), validate(updateCategorieSchema), async (req, res: Response): Promise<void> => {
+router.patch('/:id', requireRole('responsable'), validate(updateCategorieSchema), async (req: Request<{ id: string }>, res: Response): Promise<void> => {
   const existing = await prisma.categorie.findUnique({ where: { id: req.params.id } });
   if (!existing) { res.status(404).json({ message: 'Catégorie introuvable' }); return; }
 
@@ -41,7 +41,7 @@ router.patch('/:id', requireRole('responsable'), validate(updateCategorieSchema)
 });
 
 // DELETE /categories/:id — responsable uniquement
-router.delete('/:id', requireRole('responsable'), async (req, res: Response): Promise<void> => {
+router.delete('/:id', requireRole('responsable'), async (req: Request<{ id: string }>, res: Response): Promise<void> => {
   const existing = await prisma.categorie.findUnique({ where: { id: req.params.id } });
   if (!existing) { res.status(404).json({ message: 'Catégorie introuvable' }); return; }
 

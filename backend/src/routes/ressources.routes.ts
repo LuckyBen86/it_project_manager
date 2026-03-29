@@ -1,4 +1,4 @@
-import { Router, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import prisma from '../lib/prisma.js';
 import { authenticate, requireRole } from '../middleware/auth.middleware.js';
@@ -32,7 +32,7 @@ router.post('/', requireRole('responsable'), validate(createRessourceSchema), as
 });
 
 // PATCH /ressources/:id — responsable uniquement
-router.patch('/:id', requireRole('responsable'), validate(updateRessourceSchema), async (req, res: Response): Promise<void> => {
+router.patch('/:id', requireRole('responsable'), validate(updateRessourceSchema), async (req: Request<{ id: string }>, res: Response): Promise<void> => {
   const existing = await prisma.ressource.findUnique({ where: { id: req.params.id } });
   if (!existing) { res.status(404).json({ message: 'Ressource introuvable' }); return; }
 
@@ -52,7 +52,7 @@ router.patch('/:id', requireRole('responsable'), validate(updateRessourceSchema)
 });
 
 // DELETE /ressources/:id — responsable uniquement
-router.delete('/:id', requireRole('responsable'), async (req, res: Response): Promise<void> => {
+router.delete('/:id', requireRole('responsable'), async (req: Request<{ id: string }>, res: Response): Promise<void> => {
   const existing = await prisma.ressource.findUnique({ where: { id: req.params.id } });
   if (!existing) { res.status(404).json({ message: 'Ressource introuvable' }); return; }
 
