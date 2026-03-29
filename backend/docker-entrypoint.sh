@@ -2,7 +2,7 @@
 set -e
 
 echo "→ Synchronisation du schéma BDD..."
-npx prisma db push --skip-generate
+npx prisma db push
 
 echo "→ Seed initial..."
 node dist/seed.js
