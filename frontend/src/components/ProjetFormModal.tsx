@@ -14,11 +14,11 @@ import { STATUT_LABELS, STATUTS_PROJET } from '../lib/types.ts';
 const projetSchema = z.object({
   titre: z.string().min(1, 'Titre requis').max(255),
   description: z.string().optional(),
-  categorieId: z.string().uuid().optional().or(z.literal('')),
+  categorieId: z.union([z.string().uuid(), z.literal('')]).optional(),
   responsableId: z.string().uuid('Responsable requis'),
   dateButoire: z.string().optional(),
   dateDebut: z.string().optional(),
-  duree: z.coerce.number().int().positive().optional().or(z.literal('')),
+  duree: z.number().int().positive().optional(),
   statut: z.enum(['non_valide', 'a_planifier', 'planifie', 'en_cours', 'termine'] as const),
 });
 
@@ -62,10 +62,10 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
               responsableId: projet.responsable.id,
               dateButoire: toInputDate(projet.dateButoire),
               dateDebut: toInputDate(projet.dateDebut),
-              duree: projet.duree ?? '',
+              duree: projet.duree ?? undefined,
               statut: projet.statut,
             }
-          : { statut: 'non_valide', titre: '', description: '', categorieId: '', duree: '' },
+          : { statut: 'non_valide', titre: '', description: '', categorieId: '', duree: undefined },
       );
     }
   }, [open, projet, reset]);
@@ -76,7 +76,7 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
       categorieId: data.categorieId || undefined,
       dateButoire: data.dateButoire ? new Date(data.dateButoire).toISOString() : undefined,
       dateDebut: data.dateDebut ? new Date(data.dateDebut).toISOString() : undefined,
-      duree: data.duree === '' ? undefined : Number(data.duree),
+      duree: data.duree,
     };
 
     if (isEdit) {
@@ -143,7 +143,7 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
               type="number"
               min={1}
               className={inputClass}
-              {...register('duree')}
+              {...register('duree', { setValueAs: (v: string) => v === '' ? undefined : Number(v) })}
               placeholder="ex: 14"
             />
           </FormField>

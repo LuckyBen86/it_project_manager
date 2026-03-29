@@ -16,8 +16,8 @@ import type { Tache, Activite } from '../lib/types.ts';
 const tacheSchema = z.object({
   titre: z.string().min(1, 'Titre requis').max(255),
   description: z.string().optional(),
-  categorieId: z.string().uuid().optional().or(z.literal('')),
-  duree: z.coerce.number().int().positive().optional().or(z.literal('')),
+  categorieId: z.union([z.string().uuid(), z.literal('')]).optional(),
+  duree: z.number().int().positive().optional(),
   statut: z.enum(['a_faire', 'en_cours', 'termine'] as const),
   ressourceIds: z.array(z.string().uuid()).optional(),
 });
@@ -27,7 +27,7 @@ type TacheForm = z.infer<typeof tacheSchema>;
 const activiteSchema = z.object({
   description: z.string().min(1, 'Description requise'),
   date: z.string().min(1, 'Date requise'),
-  duree: z.coerce.number().int().positive('Durée > 0'),
+  duree: z.number().int().positive('Durée > 0'),
   ressourceId: z.string().uuid('Ressource requise'),
 });
 
@@ -87,11 +87,11 @@ export default function TacheFormModal({ open, onClose, onSaved, projetId, tache
               titre: tache.titre,
               description: tache.description ?? '',
               categorieId: tache.categorie?.id ?? '',
-              duree: tache.duree ?? '',
+              duree: tache.duree ?? undefined,
               statut: tache.statut,
               ressourceIds: tache.ressources.map((r) => r.ressource.id),
             }
-          : { statut: 'a_faire', titre: '', description: '', categorieId: '', duree: '', ressourceIds: [] },
+          : { statut: 'a_faire', titre: '', description: '', categorieId: '', duree: undefined, ressourceIds: [] },
       );
     }
   }, [open, tache, reset]);
@@ -108,7 +108,7 @@ export default function TacheFormModal({ open, onClose, onSaved, projetId, tache
     const payload = {
       ...data,
       categorieId: data.categorieId || undefined,
-      duree: data.duree === '' ? undefined : Number(data.duree),
+      duree: data.duree,
     };
     if (isEdit) {
       await api.patch(`/projets/${projetId}/taches/${tache.id}`, payload);
@@ -125,7 +125,6 @@ export default function TacheFormModal({ open, onClose, onSaved, projetId, tache
       await addActivite({
         ...data,
         date: new Date(data.date).toISOString(),
-        duree: Number(data.duree),
       });
       resetAct({ date: format(new Date(), 'yyyy-MM-dd'), description: '', duree: undefined as unknown as number, ressourceId: '' });
       setShowActiviteForm(false);
@@ -182,7 +181,7 @@ export default function TacheFormModal({ open, onClose, onSaved, projetId, tache
               type="number"
               min={1}
               className={inputClass}
-              {...register('duree')}
+              {...register('duree', { setValueAs: (v: string) => v === '' ? undefined : Number(v) })}
               placeholder="ex: 3"
             />
           </FormField>
@@ -284,7 +283,7 @@ export default function TacheFormModal({ open, onClose, onSaved, projetId, tache
                     type="number"
                     min={1}
                     className={inputClass}
-                    {...registerAct('duree')}
+                    {...registerAct('duree', { setValueAs: (v: string) => Number(v) })}
                     placeholder="ex: 2"
                   />
                 </FormField>
