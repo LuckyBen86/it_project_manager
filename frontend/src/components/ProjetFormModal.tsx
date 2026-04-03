@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
@@ -10,38 +10,39 @@ import TacheFormModal from './TacheFormModal.tsx';
 import ConfirmDialog from './ConfirmDialog.tsx';
 import { useRessources } from '../hooks/useRessources.ts';
 import { useTags } from '../hooks/useTags.ts';
-import { useLogiciels } from '../hooks/useLogiciels.ts';
+import { useCategories } from '../hooks/useCategories.ts';
 import { usePoles } from '../hooks/usePoles.ts';
 import api from '../lib/api.ts';
 import DateInput from './DateInput.tsx';
 import TokenField from './TokenField.tsx';
 import type { Projet, Tache, StatutProjet } from '../lib/types.ts';
 import { STATUT_LABELS, STATUTS_PROJET } from '../lib/types.ts';
+import { Controller } from 'react-hook-form';
 
 const projetSchema = z.object({
-  titre: z.string().min(1, 'Titre requis').max(255),
-  description: z.string().optional(),
-  poleId: z.string().min(1, 'Pôle requis'),
-  tagIds: z.array(z.string().uuid()).optional(),
-  logicielId: z.string().optional(),
-  referentId: z.string().optional(),
-  dateButoire: z.string().optional(),
-  dateDebut: z.string().optional(),
-  duree: z.number({ error: 'Durée requise' }).int().positive('Durée requise (≥ 1 j)'),
-  statut: z.enum(['non_valide', 'a_planifier', 'planifie', 'en_cours', 'termine'] as const),
+  titre:        z.string().min(1, 'Titre requis').max(255),
+  description:  z.string().optional(),
+  poleId:       z.string().min(1, 'Pôle requis'),
+  tagIds:       z.array(z.string().uuid()).optional(),
+  categorieIds: z.array(z.string().uuid()).optional(),
+  referentId:   z.string().optional(),
+  dateButoire:  z.string().optional(),
+  dateDebut:    z.string().optional(),
+  duree:        z.number({ error: 'Durée requise' }).int().positive('Durée requise (≥ 1 j)'),
+  statut:       z.enum(['non_valide', 'a_planifier', 'planifie', 'en_cours', 'termine'] as const),
 });
 
 type ProjetForm = z.infer<typeof projetSchema>;
 
 const STATUT_TACHE_COLORS = {
-  a_faire: 'bg-gray-100 text-gray-600',
+  a_faire:  'bg-gray-100 text-gray-600',
   en_cours: 'bg-orange-100 text-orange-700',
-  termine: 'bg-green-100 text-green-700',
+  termine:  'bg-green-100 text-green-700',
 };
 const STATUT_TACHE_LABELS = { a_faire: 'À faire', en_cours: 'En cours', termine: 'Terminé' };
 
 interface Props {
-  open: boolean;
+  open:    boolean;
   onClose: () => void;
   onSaved: () => void;
   projet?: Projet;
@@ -55,16 +56,17 @@ function toInputDate(iso?: string): string {
 export default function ProjetFormModal({ open, onClose, onSaved, projet }: Props) {
   const isEdit = !!projet;
   const { ressources } = useRessources();
-  const { tags } = useTags('projet');
-  const { logiciels } = useLogiciels();
-  const { poles } = usePoles();
+  const { poles }      = usePoles();
   const [selectedPoleId, setSelectedPoleId] = useState<string>(projet?.pole?.id ?? '');
 
+  const { tags }       = useTags('projet', selectedPoleId || undefined);
+  const { categories } = useCategories(selectedPoleId || undefined);
+
   const [localTaches, setLocalTaches] = useState<Tache[]>([]);
-  const [tacheForm, setTacheForm] = useState<{ open: boolean; tache?: Tache }>({ open: false });
+  const [tacheForm, setTacheForm]     = useState<{ open: boolean; tache?: Tache }>({ open: false });
   const [deleteTarget, setDeleteTarget] = useState<Tache | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | undefined>();
+  const [deleting, setDeleting]         = useState(false);
+  const [deleteError, setDeleteError]   = useState<string | undefined>();
 
   const {
     register,
@@ -76,18 +78,21 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
     formState: { errors, isSubmitting },
   } = useForm<ProjetForm>({
     resolver: zodResolver(projetSchema),
-    defaultValues: { statut: 'non_valide', tagIds: [] },
+    defaultValues: { statut: 'non_valide', tagIds: [], categorieIds: [] },
   });
 
-  const selectedTagIds = watch('tagIds') ?? [];
-  const tagItems = tags.map((t) => ({ id: t.id, nom: t.nom }));
-  const watchedPoleId = watch('poleId');
+  const selectedTagIds      = watch('tagIds')       ?? [];
+  const selectedCategorieIds = watch('categorieIds') ?? [];
+  const watchedPoleId        = watch('poleId');
+
+  const tagItems       = tags.map((t) => ({ id: t.id, nom: t.nom }));
+  const categorieItems = categories.map((c) => ({ id: c.id, nom: c.nom }));
+
   const poleRessources = ressources.filter((r) =>
     r.poles?.some((p) => p.pole.id === (watchedPoleId || selectedPoleId))
   );
 
-  // Durées calculées depuis les tâches locales (réactif)
-  const dureeCalculee = localTaches.reduce((s, t) => s + (t.duree ?? 0), 0);
+  const dureeCalculee  = localTaches.reduce((s, t) => s + (t.duree ?? 0), 0);
   const dureeConsommee = localTaches.reduce(
     (s, t) => s + (t.activites ?? []).reduce((sa, a) => sa + a.duree, 0), 0,
   );
@@ -95,28 +100,31 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
   useEffect(() => {
     if (open) {
       setLocalTaches(projet?.taches ?? []);
-      setSelectedPoleId(projet?.pole?.id ?? '');
+      const poleId = projet?.pole?.id ?? '';
+      setSelectedPoleId(poleId);
       reset(
         projet
           ? {
-              titre: projet.titre,
-              description: projet.description ?? '',
-              poleId: projet.pole?.id ?? '',
-              tagIds: projet.tags.map((t) => t.id),
-              logicielId: projet.logiciels?.[0]?.id ?? '',
-              referentId: projet.referent?.id ?? '',
-              dateButoire: toInputDate(projet.dateButoire),
-              dateDebut: toInputDate(projet.dateDebut),
-              duree: projet.duree ?? undefined,
-              statut: projet.statut,
+              titre:        projet.titre,
+              description:  projet.description ?? '',
+              poleId,
+              tagIds:       projet.tags.map((t) => t.id),
+              categorieIds: projet.categories.map((c) => c.id),
+              referentId:   projet.referent?.id ?? '',
+              dateButoire:  toInputDate(projet.dateButoire),
+              dateDebut:    toInputDate(projet.dateDebut),
+              duree:        projet.duree ?? undefined,
+              statut:       projet.statut,
             }
-          : { statut: 'non_valide', titre: '', description: '', poleId: '', tagIds: [], logicielId: '', referentId: '', duree: undefined },
+          : {
+              statut: 'non_valide', titre: '', description: '',
+              poleId: '', tagIds: [], categorieIds: [], referentId: '',
+              duree: undefined,
+            },
       );
     }
   }, [open, projet, reset]);
 
-  // Point 4 : quand l'utilisateur saisit une date de début et que le statut est
-  // non_valide ou a_planifier, passer automatiquement à planifie.
   const handleDateDebutChange = (value: string, fieldOnChange: (v: string) => void) => {
     fieldOnChange(value);
     if (value) {
@@ -134,7 +142,6 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
     onSaved();
   };
 
-  // Tri topologique : les tâches sans dépendances (parents) apparaissent avant leurs dépendantes
   const sortedTaches = (() => {
     const result: Tache[] = [];
     const done = new Set<string>();
@@ -148,7 +155,6 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
     return result;
   })();
 
-  // Initiales d'un nom ("Jean Dupont" → "JD")
   const initiales = (nom: string) =>
     nom.trim().split(/\s+/).map((w) => w[0]?.toUpperCase() ?? '').join('');
 
@@ -169,13 +175,12 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
   };
 
   const onSubmit = async (data: ProjetForm) => {
-    const { logicielId, referentId, ...rest } = data;
+    const { referentId, ...rest } = data;
     const payload = {
       ...rest,
-      logicielIds: logicielId ? [logicielId] : [],
-      referentId: referentId || undefined,
+      referentId:  referentId || undefined,
       dateButoire: data.dateButoire ? new Date(data.dateButoire).toISOString() : undefined,
-      dateDebut: data.dateDebut ? new Date(data.dateDebut).toISOString() : undefined,
+      dateDebut:   data.dateDebut   ? new Date(data.dateDebut).toISOString()   : undefined,
     };
 
     if (isEdit) {
@@ -212,15 +217,18 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
               />
             </FormField>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <FormField label="Pôle" error={(errors as Record<string, { message?: string }>).poleId?.message} required>
                 <select
                   className={selectClass}
                   {...register('poleId')}
                   onChange={(e) => {
-                    setSelectedPoleId(e.target.value);
-                    setValue('poleId', e.target.value);
+                    const pid = e.target.value;
+                    setSelectedPoleId(pid);
+                    setValue('poleId', pid);
                     setValue('referentId', '');
+                    setValue('tagIds', []);
+                    setValue('categorieIds', []);
                   }}
                 >
                   <option value="">— Sélectionner —</option>
@@ -238,19 +246,9 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
                   ))}
                 </select>
               </FormField>
-
-              <FormField label="Logiciel" error={errors.logicielId?.message}>
-                <select className={selectClass} {...register('logicielId')}>
-                  <option value="">— Aucun —</option>
-                  {logiciels.map((l) => (
-                    <option key={l.id} value={l.id}>{l.nom}</option>
-                  ))}
-                </select>
-              </FormField>
             </div>
 
             <div className="grid grid-cols-3 gap-3">
-              {/* Point 5 : pas de bouton raccourcis sur la date de début */}
               <FormField label="Date de début" error={errors.dateDebut?.message}>
                 <Controller
                   name="dateDebut"
@@ -296,7 +294,15 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
               </FormField>
             )}
 
-            {/* Tags déplacés en bas */}
+            <FormField label="Catégories" error={undefined}>
+              <TokenField
+                items={categorieItems}
+                selectedIds={selectedCategorieIds}
+                onChange={(ids) => setValue('categorieIds', ids)}
+                placeholder="+ Catégorie"
+              />
+            </FormField>
+
             <FormField label="Tags" error={errors.tagIds?.message}>
               <TokenField
                 items={tagItems}
@@ -327,8 +333,6 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
           {/* Colonne droite : tâches (mode édition uniquement) */}
           {isEdit && (
             <div className="border-l border-gray-100 pl-6 flex flex-col gap-2">
-
-              {/* Point 2 & 3 : durées calculées (réactives) */}
               <div className="grid grid-cols-2 gap-2 mb-2">
                 <div className="rounded-lg bg-gray-50 border border-gray-100 px-3 py-2">
                   <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold mb-0.5">Durée calculée</p>
@@ -399,7 +403,6 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
                               </span>
                             )}
                           </div>
-                          {/* Dépendances — lecture seule */}
                           {tache.dependances.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1">
                               {tache.dependances.map((dep) => (

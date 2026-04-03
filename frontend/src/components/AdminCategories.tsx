@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../lib/api.ts';
-import type { Tag, TypeTag } from '../lib/types.ts';
+import type { Tag, TypeTag, Pole } from '../lib/types.ts';
 import CategorieFormModal from './CategorieFormModal.tsx';
 import ConfirmDialog from './ConfirmDialog.tsx';
 
@@ -12,6 +12,7 @@ const TYPE_COLORS: Record<TypeTag, string> = {
 
 export default function AdminCategories() {
   const [tags, setTags] = useState<Tag[]>([]);
+  const [poles, setPoles] = useState<Pole[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<{ open: boolean; tag?: Tag; defaultType?: TypeTag }>({ open: false });
   const [deleteTarget, setDeleteTarget] = useState<Tag | null>(null);
@@ -20,16 +21,20 @@ export default function AdminCategories() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data } = await api.get<Tag[]>('/tags');
-    setTags(data);
+    const [tagData, poleData] = await Promise.all([
+      api.get<Tag[]>('/tags'),
+      api.get<Pole[]>('/poles'),
+    ]);
+    setTags(tagData.data);
+    setPoles(poleData.data);
     setLoading(false);
   }, []);
 
   useEffect(() => { void load(); }, [load]);
 
-  const handleSubmit = async (data: { nom: string; type: TypeTag }) => {
+  const handleSubmit = async (data: { nom: string; type: TypeTag; poleIds?: string[] }) => {
     if (form.tag) {
-      await api.patch(`/tags/${form.tag.id}`, { nom: data.nom });
+      await api.patch(`/tags/${form.tag.id}`, { nom: data.nom, poleIds: data.poleIds });
     } else {
       await api.post('/tags', data);
     }
@@ -87,6 +92,7 @@ export default function AdminCategories() {
             <tr>
               <th className="px-5 py-3 text-left font-medium">Nom</th>
               <th className="px-5 py-3 text-left font-medium">Type</th>
+              <th className="px-5 py-3 text-left font-medium">Pôles</th>
               <th className="px-5 py-3 text-right font-medium">Actions</th>
             </tr>
           </thead>
@@ -98,6 +104,19 @@ export default function AdminCategories() {
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${TYPE_COLORS[tag.type]}`}>
                     {TYPE_LABELS[tag.type]}
                   </span>
+                </td>
+                <td className="px-5 py-3">
+                  {(tag.poles ?? []).length === 0 ? (
+                    <span className="text-xs text-gray-400 italic">Tous les pôles</span>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {tag.poles!.map((p) => (
+                        <span key={p.id} className="text-xs bg-brand-50 text-brand-700 border border-brand-200 px-2 py-0.5 rounded-full">
+                          {p.nom}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </td>
                 <td className="px-5 py-3 text-right">
                   <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -127,6 +146,7 @@ export default function AdminCategories() {
         onSubmit={handleSubmit}
         tag={form.tag}
         defaultType={form.defaultType ?? 'projet'}
+        poles={poles}
       />
 
       <ConfirmDialog

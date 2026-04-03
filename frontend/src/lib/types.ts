@@ -55,11 +55,13 @@ export interface Tag {
   id: string;
   nom: string;
   type: TypeTag;
+  poles?: Pick<Pole, 'id' | 'nom'>[];
 }
 
-export interface Logiciel {
+export interface Categorie {
   id: string;
   nom: string;
+  poles?: Pick<Pole, 'id' | 'nom'>[];
 }
 
 export interface TacheRessource {
@@ -113,8 +115,8 @@ export interface Projet {
   description?: string;
   pole?: Pole;
   poleId?: string;
-  tags: Tag[];
-  logiciels: Logiciel[];
+  tags:       Tag[];
+  categories: Categorie[];
   referent?: Pick<Ressource, 'id' | 'nom' | 'email'>;
   dateButoire?: string;
   dateDebut?: string;

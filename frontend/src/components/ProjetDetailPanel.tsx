@@ -95,9 +95,9 @@ export default function ProjetDetailPanel({ open, onClose, projet, isResponsable
                 {t.nom}
               </span>
             ))}
-            {projet.logiciels?.map((l) => (
-              <span key={l.id} className="text-xs text-teal-700 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-full">
-                {l.nom}
+            {projet.categories?.map((c) => (
+              <span key={c.id} className="text-xs text-teal-700 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-full">
+                {c.nom}
               </span>
             ))}
           </div>

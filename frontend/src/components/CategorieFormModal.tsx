@@ -4,11 +4,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Modal from './Modal.tsx';
 import FormField, { inputClass, selectClass } from './FormField.tsx';
-import type { Tag, TypeTag } from '../lib/types.ts';
+import TokenField from './TokenField.tsx';
+import type { Tag, TypeTag, Pole } from '../lib/types.ts';
 
 const tagSchema = z.object({
-  nom: z.string().min(1, 'Nom requis').max(100),
-  type: z.enum(['projet', 'tache'] as const),
+  nom:     z.string().min(1, 'Nom requis').max(100),
+  type:    z.enum(['projet', 'tache'] as const),
+  poleIds: z.array(z.string()).optional(),
 });
 
 type TagForm = z.infer<typeof tagSchema>;
@@ -19,15 +21,18 @@ interface Props {
   onSubmit: (data: TagForm) => Promise<void>;
   tag?: Tag;
   defaultType?: TypeTag;
+  poles: Pole[];
 }
 
-export default function CategorieFormModal({ open, onClose, onSubmit, tag, defaultType = 'projet' }: Props) {
+export default function CategorieFormModal({ open, onClose, onSubmit, tag, defaultType = 'projet', poles }: Props) {
   const isEdit = !!tag;
 
   const {
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<TagForm>({ resolver: zodResolver(tagSchema) });
 
@@ -35,8 +40,8 @@ export default function CategorieFormModal({ open, onClose, onSubmit, tag, defau
     if (open) {
       reset(
         tag
-          ? { nom: tag.nom, type: tag.type }
-          : { nom: '', type: defaultType },
+          ? { nom: tag.nom, type: tag.type, poleIds: (tag.poles ?? []).map((p) => p.id) }
+          : { nom: '', type: defaultType, poleIds: [] },
       );
     }
   }, [open, tag, defaultType, reset]);
@@ -45,6 +50,9 @@ export default function CategorieFormModal({ open, onClose, onSubmit, tag, defau
     await onSubmit(data);
     onClose();
   };
+
+  const poleItems = poles.map((p) => ({ id: p.id, nom: p.nom }));
+  const selectedPoleIds = watch('poleIds') ?? [];
 
   return (
     <Modal open={open} onClose={onClose} title={isEdit ? 'Modifier le tag' : 'Nouveau tag'} size="sm">
@@ -58,6 +66,15 @@ export default function CategorieFormModal({ open, onClose, onSubmit, tag, defau
             <option value="projet">Projet</option>
             <option value="tache">Tâche</option>
           </select>
+        </FormField>
+
+        <FormField label="Pôles (vide = tous les pôles)" error={undefined}>
+          <TokenField
+            items={poleItems}
+            selectedIds={selectedPoleIds}
+            onChange={(ids) => setValue('poleIds', ids)}
+            placeholder="+ Pôle"
+          />
         </FormField>
 
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">

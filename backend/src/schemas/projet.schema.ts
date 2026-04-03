@@ -5,7 +5,7 @@ export const createProjetSchema = z.object({
   description: z.string().optional(),
   poleId: z.string().uuid('ID pôle invalide'),
   tagIds: z.array(z.string().uuid()).optional(),
-  logicielIds: z.array(z.string().uuid()).optional(),
+  categorieIds: z.array(z.string().uuid()).optional(),
   referentId: z.string().uuid('ID référent invalide').optional(),
   dateButoire: z.string().datetime().optional(),
   dateDebut: z.string().datetime().optional(),

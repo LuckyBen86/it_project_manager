@@ -16,8 +16,8 @@ router.use(authenticate);
 const PROJET_INCLUDE = {
   referent: { select: { id: true, nom: true, email: true } },
   pole: { select: { id: true, nom: true } },
-  tags: { select: { tag: true } },
-  logiciels: { select: { logiciel: true } },
+  tags:       { select: { tag: true } },
+  categories: { select: { categorie: true } },
   taches: {
     where: { deletedAt: null },
     include: {
@@ -33,8 +33,8 @@ const PROJET_INCLUDE = {
 function flattenTags(obj: any): any {
   const result = {
     ...obj,
-    tags: (obj.tags ?? []).map((pt: any) => pt.tag),
-    logiciels: (obj.logiciels ?? []).map((pl: any) => pl.logiciel),
+    tags:       (obj.tags       ?? []).map((pt: any) => pt.tag),
+    categories: (obj.categories ?? []).map((pc: any) => pc.categorie),
   };
   if (result.taches) {
     result.taches = result.taches.map((t: any) => ({ ...t, tags: (t.tags ?? []).map((tt: any) => tt.tag) }));
@@ -92,15 +92,15 @@ router.get('/:id', async (req: Request<{ id: string }>, res: Response): Promise<
 
 // POST /projets — responsable ou direction_generale
 router.post('/', requireRole('responsable', 'direction_generale'), validate(createProjetSchema), async (req: AuthRequest, res: Response): Promise<void> => {
-  const { tagIds, logicielIds, ...data } = req.body;
+  const { tagIds, categorieIds, ...data } = req.body;
   const projet = await prisma.projet.create({
     data: {
       ...data,
       tags: tagIds?.length
         ? { create: tagIds.map((id: string) => ({ tagId: id })) }
         : undefined,
-      logiciels: logicielIds?.length
-        ? { create: logicielIds.map((id: string) => ({ logicielId: id })) }
+      categories: categorieIds?.length
+        ? { create: categorieIds.map((id: string) => ({ categorieId: id })) }
         : undefined,
     },
     include: PROJET_INCLUDE,
@@ -129,7 +129,7 @@ router.patch('/:id', validate(updateProjetSchema), async (req: AuthRequest & Req
     return;
   }
 
-  const { tagIds, logicielIds, ...body } = req.body;
+  const { tagIds, categorieIds, ...body } = req.body;
 
   const dateDebutResultante = body.dateDebut !== undefined ? body.dateDebut : existing.dateDebut;
   const statutExplicite: string = body.statut ?? existing.statut;
@@ -144,8 +144,8 @@ router.patch('/:id', validate(updateProjetSchema), async (req: AuthRequest & Req
       ...(tagIds !== undefined ? {
         tags: { deleteMany: {}, create: tagIds.map((id: string) => ({ tagId: id })) },
       } : {}),
-      ...(logicielIds !== undefined ? {
-        logiciels: { deleteMany: {}, create: logicielIds.map((id: string) => ({ logicielId: id })) },
+      ...(categorieIds !== undefined ? {
+        categories: { deleteMany: {}, create: categorieIds.map((id: string) => ({ categorieId: id })) },
       } : {}),
     },
     include: PROJET_INCLUDE,

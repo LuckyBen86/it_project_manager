@@ -61,6 +61,8 @@ model Pole {
   projets      Projet[]
   ressources   RessourcePole[]
   responsables ResponsablePole[]
+  categories   CategoriePolе[]
+  tags         TagPole[]
 
   @@map("poles")
 }
@@ -115,9 +117,21 @@ model Tag {
 
   projets ProjetTag[]
   taches  TacheTag[]
+  poles   TagPole[]
 
   @@unique([nom, type])
   @@map("tags")
+}
+
+model TagPole {
+  tagId  String @map("tag_id")
+  poleId String @map("pole_id")
+
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  pole Pole @relation(fields: [poleId], references: [id], onDelete: Cascade)
+
+  @@id([tagId, poleId])
+  @@map("tag_poles")
 }
 
 model ProjetTag {
@@ -142,24 +156,36 @@ model TacheTag {
   @@map("tache_tags")
 }
 
-model Logiciel {
+model Categorie {
   id   String @id @default(uuid())
   nom  String @unique
 
-  projets ProjetLogiciel[]
+  projets ProjetCategorie[]
+  poles   CategoriePolе[]
 
-  @@map("logiciels")
+  @@map("categories")
 }
 
-model ProjetLogiciel {
-  projetId   String @map("projet_id")
-  logicielId String @map("logiciel_id")
+model CategoriePolе {
+  categorieId String @map("categorie_id")
+  poleId      String @map("pole_id")
 
-  projet   Projet   @relation(fields: [projetId], references: [id], onDelete: Cascade)
-  logiciel Logiciel @relation(fields: [logicielId], references: [id], onDelete: Cascade)
+  categorie Categorie @relation(fields: [categorieId], references: [id], onDelete: Cascade)
+  pole      Pole      @relation(fields: [poleId], references: [id], onDelete: Cascade)
 
-  @@id([projetId, logicielId])
-  @@map("projet_logiciels")
+  @@id([categorieId, poleId])
+  @@map("categorie_poles")
+}
+
+model ProjetCategorie {
+  projetId    String @map("projet_id")
+  categorieId String @map("categorie_id")
+
+  projet    Projet    @relation(fields: [projetId], references: [id], onDelete: Cascade)
+  categorie Categorie @relation(fields: [categorieId], references: [id], onDelete: Cascade)
+
+  @@id([projetId, categorieId])
+  @@map("projet_categories")
 }
 
 model Projet {
@@ -177,9 +203,9 @@ model Projet {
   deletedAt   DateTime?    @map("deleted_at")
   deletedById String?      @map("deleted_by_id")
 
-  pole      Pole           @relation(fields: [poleId], references: [id])
-  tags      ProjetTag[]
-  logiciels ProjetLogiciel[]
+  pole       Pole             @relation(fields: [poleId], references: [id])
+  tags       ProjetTag[]
+  categories ProjetCategorie[]
   referent  Ressource?     @relation("ReferentProjet", fields: [referentId], references: [id])
   deletedBy Ressource?     @relation("ProjetDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
   taches    Tache[]

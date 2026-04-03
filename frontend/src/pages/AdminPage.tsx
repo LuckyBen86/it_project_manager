@@ -6,7 +6,7 @@ import AdminLogiciels from '../components/AdminLogiciels.tsx';
 import AdminPoles from '../components/AdminPoles.tsx';
 import { useAuthStore } from '../store/auth.store.ts';
 
-type Tab = 'ressources' | 'poles' | 'tags' | 'logiciels' | 'journal';
+type Tab = 'ressources' | 'poles' | 'tags' | 'categories' | 'journal';
 
 export default function AdminPage() {
   const user = useAuthStore((s) => s.user);
@@ -16,7 +16,7 @@ export default function AdminPage() {
     { id: 'ressources', label: 'Ressources' },
     { id: 'poles', label: 'Pôles', dgOnly: true },
     { id: 'tags', label: 'Tags' },
-    { id: 'logiciels', label: 'Logiciels' },
+    { id: 'categories', label: 'Catégories' },
     { id: 'journal', label: 'Journal' },
   ];
 
@@ -53,7 +53,7 @@ export default function AdminPage() {
         {tab === 'ressources' && <AdminRessources />}
         {tab === 'poles' && isDG && <AdminPoles />}
         {tab === 'tags' && <AdminCategories />}
-        {tab === 'logiciels' && <AdminLogiciels />}
+        {tab === 'categories' && <AdminLogiciels />}
         {tab === 'journal' && <AdminJournal />}
       </div>
     </div>

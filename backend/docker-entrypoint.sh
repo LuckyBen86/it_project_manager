@@ -13,6 +13,9 @@ psql "$DATABASE_URL" -f /app/prisma/migrate-remove-responsable-add-referent.sql
 echo "→ Migration responsable multi-pôles..."
 psql "$DATABASE_URL" -f /app/prisma/migrate-responsable-multi-poles.sql
 
+echo "→ Migration logiciel → catégorie + associations pôles..."
+psql "$DATABASE_URL" -f /app/prisma/migrate-logiciel-to-categorie-and-poles.sql
+
 echo "→ Synchronisation du schéma BDD..."
 npx prisma db push --accept-data-loss
 
