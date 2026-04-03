@@ -22,6 +22,7 @@ export default function AdminLogiciels() {
   const [form, setForm] = useState<{ open: boolean; categorie?: Categorie }>({ open: false });
   const [deleteTarget, setDeleteTarget] = useState<Categorie | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [filterPoleId, setFilterPoleId] = useState<string>('');
 
   const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<CategorieForm>({
     resolver: zodResolver(categorieSchema),
@@ -75,21 +76,37 @@ export default function AdminLogiciels() {
   const poleItems = poles.map((p) => ({ id: p.id, nom: p.nom }));
   const selectedPoleIds = watch('poleIds') ?? [];
 
+  const filtered = categories.filter((cat) => {
+    if (!filterPoleId) return true;
+    if ((cat.poles ?? []).length === 0) return false;
+    return (cat.poles ?? []).some((p) => p.id === filterPoleId);
+  });
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-gray-900">Catégories</h2>
-        <button
-          onClick={openCreate}
-          className="text-xs px-3 py-1.5 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors font-medium"
-        >
-          + Nouvelle catégorie
-        </button>
+        <div className="flex items-center gap-2">
+          <select
+            value={filterPoleId}
+            onChange={(e) => setFilterPoleId(e.target.value)}
+            className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:border-brand-400"
+          >
+            <option value="">Tous les pôles</option>
+            {poles.map((p) => <option key={p.id} value={p.id}>{p.nom}</option>)}
+          </select>
+          <button
+            onClick={openCreate}
+            className="text-xs px-3 py-1.5 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors font-medium"
+          >
+            + Nouvelle catégorie
+          </button>
+        </div>
       </div>
 
       {loading ? (
         <div className="p-6 text-center text-sm text-gray-400">Chargement...</div>
-      ) : categories.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="p-6 text-center text-sm text-gray-400">Aucune catégorie</div>
       ) : (
         <table className="w-full text-sm">
@@ -101,7 +118,7 @@ export default function AdminLogiciels() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {categories.map((cat) => (
+            {filtered.map((cat) => (
               <tr key={cat.id} className="group hover:bg-gray-50 transition-colors">
                 <td className="px-5 py-3 font-medium text-gray-800">{cat.nom}</td>
                 <td className="px-5 py-3">

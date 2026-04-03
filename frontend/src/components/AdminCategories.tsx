@@ -18,6 +18,7 @@ export default function AdminCategories() {
   const [deleteTarget, setDeleteTarget] = useState<Tag | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [filter, setFilter] = useState<TypeTag | 'tous'>('tous');
+  const [filterPoleId, setFilterPoleId] = useState<string>('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -53,7 +54,14 @@ export default function AdminCategories() {
     }
   };
 
-  const filtered = filter === 'tous' ? tags : tags.filter((t) => t.type === filter);
+  const filtered = tags.filter((t) => {
+    if (filter !== 'tous' && t.type !== filter) return false;
+    if (filterPoleId) {
+      if ((t.poles ?? []).length === 0) return false;
+      if (!(t.poles ?? []).some((p) => p.id === filterPoleId)) return false;
+    }
+    return true;
+  });
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -74,12 +82,22 @@ export default function AdminCategories() {
             ))}
           </div>
         </div>
-        <button
-          onClick={() => setForm({ open: true })}
-          className="text-xs px-3 py-1.5 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors font-medium"
-        >
-          + Nouveau tag
-        </button>
+        <div className="flex items-center gap-2">
+          <select
+            value={filterPoleId}
+            onChange={(e) => setFilterPoleId(e.target.value)}
+            className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:border-brand-400"
+          >
+            <option value="">Tous les pôles</option>
+            {poles.map((p) => <option key={p.id} value={p.id}>{p.nom}</option>)}
+          </select>
+          <button
+            onClick={() => setForm({ open: true })}
+            className="text-xs px-3 py-1.5 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors font-medium"
+          >
+            + Nouveau tag
+          </button>
+        </div>
       </div>
 
       {loading ? (

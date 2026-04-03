@@ -43,6 +43,7 @@ export default function KanbanPage() {
   const [filterPoleId, setFilterPoleId] = useState('');
   const [filterTagId, setFilterTagId] = useState('');
   const [filterTermineDelai, setFilterTermineDelai] = useState(2); // mois
+  const [showTermine, setShowTermine] = useState(false);
 
   const isResponsable = user?.role === 'responsable' || user?.role === 'direction_generale';
 
@@ -50,7 +51,7 @@ export default function KanbanPage() {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
-  const hasActiveFilters = !!(filterReferentId || filterPoleId || filterTagId || filterTermineDelai !== 2);
+  const hasActiveFilters = !!(filterReferentId || filterPoleId || filterTagId || filterTermineDelai !== 2 || showTermine);
 
   const projetsFiltered = useMemo(() => {
     const termineThreshold = subMonths(new Date(), filterTermineDelai);
@@ -221,28 +222,44 @@ export default function KanbanPage() {
 
           <div className="w-px h-4 bg-gray-300" />
 
-          {/* Délai terminés */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500 font-medium shrink-0">Terminés depuis :</span>
-            <select
-              value={filterTermineDelai}
-              onChange={(e) => setFilterTermineDelai(Number(e.target.value))}
-              className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:border-brand-400"
-            >
-              <option value={1}>1 mois</option>
-              <option value={2}>2 mois</option>
-              <option value={3}>3 mois</option>
-              <option value={6}>6 mois</option>
-              <option value={12}>12 mois</option>
-              <option value={999}>Tous</option>
-            </select>
-          </div>
+          {/* Afficher terminés */}
+          <label className="flex items-center gap-1.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showTermine}
+              onChange={(e) => setShowTermine(e.target.checked)}
+              className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+            />
+            <span className="text-xs text-gray-500 font-medium">Afficher "Terminé"</span>
+          </label>
+
+          {showTermine && (
+            <>
+              <div className="w-px h-4 bg-gray-300" />
+              {/* Délai terminés */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 font-medium shrink-0">Terminés depuis :</span>
+                <select
+                  value={filterTermineDelai}
+                  onChange={(e) => setFilterTermineDelai(Number(e.target.value))}
+                  className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:border-brand-400"
+                >
+                  <option value={1}>1 mois</option>
+                  <option value={2}>2 mois</option>
+                  <option value={3}>3 mois</option>
+                  <option value={6}>6 mois</option>
+                  <option value={12}>12 mois</option>
+                  <option value={999}>Tous</option>
+                </select>
+              </div>
+            </>
+          )}
 
           {hasActiveFilters && (
             <>
               <div className="w-px h-4 bg-gray-300" />
               <button
-                onClick={() => { setFilterReferentId(''); setFilterPoleId(''); setFilterTagId(''); setFilterTermineDelai(2); }}
+                onClick={() => { setFilterReferentId(''); setFilterPoleId(''); setFilterTagId(''); setFilterTermineDelai(2); setShowTermine(false); }}
                 className="text-xs text-gray-500 hover:text-gray-700 underline transition-colors"
               >
                 Réinitialiser
@@ -261,7 +278,7 @@ export default function KanbanPage() {
           onDragEnd={handleDragEnd}
         >
           <div className="flex gap-3 h-full">
-            {STATUTS_PROJET.map((statut) => (
+            {STATUTS_PROJET.filter((s) => s !== 'termine' || showTermine).map((statut) => (
               <KanbanColonne
                 key={statut}
                 statut={statut}

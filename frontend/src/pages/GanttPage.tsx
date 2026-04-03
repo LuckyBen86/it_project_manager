@@ -423,18 +423,6 @@ export default function GanttPage() {
                       </button>
                     </div>
 
-                    {/* Boutons au survol */}
-                    <div className="flex gap-0.5 shrink-0 ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => isResponsable ? setEditProjet(projet) : setDetailProjet(projet)}
-                        title={isResponsable ? 'Modifier le projet' : 'Voir les tâches'}
-                        className="p-1.5 rounded text-gray-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                      </button>
-                    </div>
                   </div>
 
                   {/* Lignes tâches (si déroulé) */}
@@ -473,15 +461,6 @@ export default function GanttPage() {
                           ))}
                         </div>
                       )}
-                      <button
-                        onClick={() => setTacheModal({ projetId: projet.id, tache })}
-                        title="Voir la fiche"
-                        className="shrink-0 p-1 rounded text-gray-400 hover:text-brand-600 hover:bg-brand-50 transition-colors opacity-0 group-hover:opacity-100 ml-0.5"
-                      >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                      </button>
                     </div>
                   ))}
                   {expanded && projet.taches.length === 0 && (
@@ -581,7 +560,7 @@ export default function GanttPage() {
 
                       {todayOffset >= 0 && todayOffset <= totalWidth && (
                         <div
-                          className="absolute top-0 h-full w-px bg-red-400 z-10 pointer-events-none"
+                          className="absolute top-0 h-full w-px bg-gray-300 z-10 pointer-events-none"
                           style={{ left: `${todayOffset}px` }}
                         />
                       )}
@@ -592,7 +571,6 @@ export default function GanttPage() {
                         dayWidth={dayWidth}
                         draggable={isResponsable}
                         onUpdate={handleProjetGanttUpdate}
-                        onOpenDetail={() => isResponsable ? setEditProjet(projet) : setDetailProjet(projet)}
                       />
 
                       {/* Marqueur date butoire */}
@@ -601,21 +579,11 @@ export default function GanttPage() {
                         if (offset < 0 || offset > totalWidth) return null;
                         return (
                           <div
-                            className="absolute top-0 h-full flex flex-col items-center pointer-events-none z-10"
+                            className="absolute top-0 h-full pointer-events-none z-10"
                             style={{ left: `${offset}px` }}
+                            title={`Date butoire : ${new Date(projet.dateButoire).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}`}
                           >
-                            <div className="w-px h-full bg-rose-500/40" />
-                            <svg
-                              className="absolute top-0 -translate-x-1/2 pointer-events-auto cursor-default drop-shadow"
-                              style={{ height: '100%', width: 'auto' }}
-                              viewBox="0 0 14 18"
-                            >
-                              <title>{`Date butoire : ${new Date(projet.dateButoire).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}`}</title>
-                              {/* Mât */}
-                              <line x1="2" y1="1" x2="2" y2="17" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" />
-                              {/* Fanion triangulaire */}
-                              <path d="M2 1 L13 5 L2 9 Z" fill="#ef4444" />
-                            </svg>
+                            <div className="w-0.5 h-full bg-rose-500/60" />
                           </div>
                         );
                       })()}
@@ -661,7 +629,7 @@ export default function GanttPage() {
 
                             {todayOffset >= 0 && todayOffset <= totalWidth && (
                               <div
-                                className="absolute top-0 h-full w-px bg-red-400/50 z-10 pointer-events-none"
+                                className="absolute top-0 h-full w-px bg-gray-300 z-10 pointer-events-none"
                                 style={{ left: `${todayOffset}px` }}
                               />
                             )}
@@ -677,7 +645,6 @@ export default function GanttPage() {
                               draggable={isResponsable}
                               minStartDate={minStartDate}
                               onUpdate={(tacheId, updates) => handleTacheGanttUpdate(projet.id, tacheId, updates)}
-                              onOpenDetail={() => setTacheModal({ projetId: projet.id, tache, projetDateDebut: projet.dateDebut })}
                             />
                           </div>
                         );

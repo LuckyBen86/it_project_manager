@@ -19,7 +19,6 @@ interface Props {
   dayWidth: number;
   draggable: boolean;
   onUpdate: (id: string, updates: { dateDebut?: string; duree?: number }) => void;
-  onOpenDetail?: () => void;
 }
 
 const STATUT_COLORS: Record<string, string> = {
@@ -34,7 +33,7 @@ const STATUT_LABELS: Record<string, string> = {
   en_cours: 'En cours',
 };
 
-export default function GanttBarre({ projet, timelineStart, dayWidth, draggable, onUpdate, onOpenDetail }: Props) {
+export default function GanttBarre({ projet, timelineStart, dayWidth, draggable, onUpdate }: Props) {
   const barRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
@@ -186,24 +185,13 @@ export default function GanttBarre({ projet, timelineStart, dayWidth, draggable,
       >
         <span className="truncate flex-1">{projet.titre}</span>
 
-        {onOpenDetail && isHovered && (
-          <button
-            onMouseDown={(e) => e.stopPropagation()}
-            onClick={(e) => { e.stopPropagation(); onOpenDetail(); }}
-            title="Voir la fiche"
-            className="shrink-0 ml-1 p-0.5 rounded hover:bg-white/30"
-          >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-          </button>
-        )}
-
         {draggable && (
           <div
-            className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-white/30 rounded-r"
+            className="absolute right-0 top-0 h-full w-4 cursor-col-resize hover:bg-white/30 rounded-r flex items-center justify-center"
             onMouseDown={handleResizeMouseDown}
-          />
+          >
+            <div className="w-0.5 h-3/5 bg-white/60 rounded-full" />
+          </div>
         )}
       </div>
 
