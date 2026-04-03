@@ -123,6 +123,31 @@ export interface TimelineHeader {
 }
 
 /**
+ * Trie les tâches en ordre topologique : les prédécesseurs apparaissent toujours
+ * avant leurs dépendants. Les cycles éventuels sont ignorés gracieusement.
+ */
+export function sortTasksTopologically(tasks: Tache[]): Tache[] {
+  const taskMap = new Map(tasks.map((t) => [t.id, t]));
+  const sorted: Tache[] = [];
+  const visited = new Set<string>();
+
+  const visit = (task: Tache, stack = new Set<string>()) => {
+    if (visited.has(task.id)) return;
+    if (stack.has(task.id)) return; // cycle : on ignore
+    stack.add(task.id);
+    for (const dep of task.dependances ?? []) {
+      const pred = taskMap.get(dep.precedentId);
+      if (pred) visit(pred, stack);
+    }
+    visited.add(task.id);
+    sorted.push(task);
+  };
+
+  tasks.forEach((t) => visit(t));
+  return sorted;
+}
+
+/**
  * Calcule la date de début de chaque tâche en tenant compte des dépendances.
  * Une tâche sans prédécesseur commence à projectStart.
  * Une tâche avec prédécesseurs commence après la fin du prédécesseur le plus tardif.
@@ -133,30 +158,21 @@ export function computeTaskStartDates(tasks: Tache[], projectStart: Date): Map<s
   const resolve = (task: Tache): Date => {
     if (startDates.has(task.id)) return startDates.get(task.id)!;
 
-    if (task.dateDebut) {
-      const d = new Date(task.dateDebut);
-      startDates.set(task.id, d);
-      return d;
-    }
+    // Base : date explicite en base ou début du projet
+    let base = task.dateDebut ? new Date(task.dateDebut) : projectStart;
 
-    const predecessorIds = task.dependances?.map((d) => d.precedentId) ?? [];
-
-    if (predecessorIds.length === 0) {
-      startDates.set(task.id, projectStart);
-      return projectStart;
-    }
-
-    let latestEnd = projectStart;
-    for (const predId of predecessorIds) {
-      const pred = tasks.find((t) => t.id === predId);
-      if (!pred || !pred.duree) continue;
+    // Contraintes des prédécesseurs : la tâche ne peut pas commencer avant leur fin,
+    // même si une dateDebut explicite est enregistrée (données potentiellement obsolètes).
+    for (const dep of task.dependances ?? []) {
+      const pred = tasks.find((t) => t.id === dep.precedentId);
+      if (!pred?.duree) continue;
       const predStart = resolve(pred);
       const predEnd = addBusinessDays(predStart, pred.duree);
-      if (predEnd > latestEnd) latestEnd = predEnd;
+      if (predEnd > base) base = predEnd;
     }
 
-    startDates.set(task.id, latestEnd);
-    return latestEnd;
+    startDates.set(task.id, base);
+    return base;
   };
 
   tasks.forEach((t) => resolve(t));

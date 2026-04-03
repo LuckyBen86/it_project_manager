@@ -1,13 +1,17 @@
 import { useRef, useState } from 'react';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { addDays } from 'date-fns';
 import {
   dateToOffset,
   offsetToDate,
   businessDaysWidth,
   countBusinessDays,
   isWeekend,
+  addBusinessDays,
 } from '../../lib/gantt.ts';
-import { addDays } from 'date-fns';
 import type { Tache } from '../../lib/types.ts';
+import GanttTooltip from './GanttTooltip.tsx';
 
 interface Props {
   tache: Tache;
@@ -26,6 +30,12 @@ const TACHE_COLORS: Record<string, string> = {
   termine: '#4ade80',
 };
 
+const TACHE_STATUT_LABELS: Record<string, string> = {
+  a_faire: 'À faire',
+  en_cours: 'En cours',
+  termine: 'Terminé',
+};
+
 export default function TacheBarre({
   tache,
   taskStart,
@@ -40,17 +50,21 @@ export default function TacheBarre({
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [tooltipPos, setTooltipPos] = useState<'top' | 'bottom'>('top');
+  const [barRect, setBarRect] = useState<DOMRect | null>(null);
 
   if (!tache.duree) return null;
 
   const left = dateToOffset(taskStart, timelineStart, dayWidth);
   const width = businessDaysWidth(taskStart, tache.duree, dayWidth);
   const bgColor = TACHE_COLORS[tache.statut] ?? '#94a3b8';
+  const dateFin = addBusinessDays(taskStart, tache.duree);
 
-  // Offset px minimum imposé par les dépendances
-  const minLeft = minStartDate
-    ? dateToOffset(minStartDate, timelineStart, dayWidth)
-    : 0;
+  const dureeActivites = (tache.activites ?? []).reduce((s, a) => s + a.duree, 0);
+  const gaugePct = tache.duree > 0 ? Math.min(1, dureeActivites / tache.duree) : 0;
+  const gaugeOver = dureeActivites > tache.duree;
+
+  const minLeft = minStartDate ? dateToOffset(minStartDate, timelineStart, dayWidth) : 0;
 
   const handleDragMouseDown = (e: React.MouseEvent) => {
     if (!draggable) return;
@@ -110,39 +124,124 @@ export default function TacheBarre({
     document.addEventListener('mouseup', onUp);
   };
 
+  const showTooltip = isHovered && !isDragging && !isResizing;
+
   return (
     <div
       ref={barRef}
-      className={`absolute top-1.5 h-5 rounded flex items-center px-1.5 text-xs font-medium text-white select-none ${
-        isDragging || isResizing ? 'opacity-70 z-10' : ''
-      } ${draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
-      style={{ left: `${left}px`, width: `${Math.max(width, 20)}px`, backgroundColor: bgColor, opacity: isDragging || isResizing ? 0.7 : 0.85 }}
+      className={`absolute select-none ${isDragging || isResizing ? 'opacity-70 z-10' : 'z-[1]'} ${draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
+      style={{ left: `${left}px`, width: `${Math.max(width, 20)}px`, top: '3px' }}
       onMouseDown={handleDragMouseDown}
-      onMouseEnter={() => setIsHovered(true)}
+      onMouseEnter={() => {
+        if (barRef.current) {
+          const rect = barRef.current.getBoundingClientRect();
+          setBarRect(rect);
+          setTooltipPos(rect.top > 220 ? 'top' : 'bottom');
+        }
+        setIsHovered(true);
+      }}
       onMouseLeave={() => setIsHovered(false)}
-      title={`${tache.titre} — ${tache.duree} j ouvrés`}
     >
-      <span className="truncate flex-1">{tache.titre}</span>
-
-      {onOpenDetail && isHovered && (
-        <button
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => { e.stopPropagation(); onOpenDetail(); }}
-          title="Voir la fiche"
-          className="shrink-0 ml-1 p-0.5 rounded hover:bg-white/30"
+      {/* Tooltip */}
+      <GanttTooltip visible={showTooltip} anchorRect={barRect} position={tooltipPos}>
+        <p className="font-semibold text-white truncate">{tache.titre}</p>
+        <span
+          className="inline-block mt-1 px-1.5 py-px rounded-md text-[10px] font-medium"
+          style={{ backgroundColor: `${bgColor}40`, color: bgColor }}
         >
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
-        </button>
-      )}
+          {TACHE_STATUT_LABELS[tache.statut] ?? tache.statut}
+        </span>
 
-      {draggable && (
-        <div
-          className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-white/30 rounded-r"
-          onMouseDown={handleResizeMouseDown}
-        />
-      )}
+        <div className="mt-1.5 pt-1.5 border-t border-white/10 space-y-0.5 text-white/65">
+          <div className="flex justify-between gap-4">
+            <span>Début</span>
+            <span className="text-white/90">{format(taskStart, 'd MMM yyyy', { locale: fr })}</span>
+          </div>
+          <div className="flex justify-between gap-4">
+            <span>Fin est.</span>
+            <span className="text-white/90">{format(dateFin, 'd MMM yyyy', { locale: fr })}</span>
+          </div>
+          <div className="flex justify-between gap-4">
+            <span>Durée</span>
+            <span className="text-white/90">{tache.duree} j alloués</span>
+          </div>
+          {dureeActivites > 0 && (
+            <div className="flex justify-between gap-4">
+              <span>Saisi</span>
+              <span className={gaugeOver ? 'text-red-400 font-medium' : 'text-white/90'}>
+                {dureeActivites.toFixed(1)} j{gaugeOver ? ' ⚠' : ''}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {dureeActivites > 0 && (
+          <div className="mt-1.5 h-1 rounded-full bg-white/15 overflow-hidden">
+            <div
+              className="h-full rounded-full"
+              style={{
+                width: `${Math.min(100, gaugePct * 100)}%`,
+                backgroundColor: gaugeOver ? '#f87171' : '#34d399',
+              }}
+            />
+          </div>
+        )}
+
+        {tache.ressources.length > 0 && (
+          <div className="mt-1.5 pt-1.5 border-t border-white/10">
+            <span className="text-white/50 text-[10px]">Intervenant{tache.ressources.length > 1 ? 's' : ''}</span>
+            <p className="text-white/85">{tache.ressources.map((r) => r.ressource.nom).join(', ')}</p>
+          </div>
+        )}
+
+        {tache.dependances.length > 0 && (
+          <div className="mt-1 pt-1.5 border-t border-white/10">
+            <span className="text-white/50 text-[10px]">Dépend de</span>
+            <p className="text-white/85">{tache.dependances.map((d) => d.precedent.titre).join(', ')}</p>
+          </div>
+        )}
+      </GanttTooltip>
+
+      {/* Barre principale */}
+      <div
+        className="h-6 rounded flex items-center px-1.5 text-xs font-medium text-white relative"
+        style={{ backgroundColor: bgColor, opacity: isDragging || isResizing ? 1 : 0.85 }}
+      >
+        <span className="truncate flex-1">{tache.titre}</span>
+
+        {onOpenDetail && isHovered && (
+          <button
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); onOpenDetail(); }}
+            title="Voir la fiche"
+            className="shrink-0 ml-1 p-0.5 rounded hover:bg-white/30"
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+          </button>
+        )}
+
+        {draggable && (
+          <div
+            className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-white/30 rounded-r"
+            onMouseDown={handleResizeMouseDown}
+          />
+        )}
+      </div>
+
+      {/* Jauge en dessous de la barre */}
+      <div className="h-1.5 w-full mt-0.5 rounded overflow-hidden bg-black/20 border border-gray-300/50">
+        {dureeActivites > 0 && (
+          <div
+            className="h-full rounded transition-all"
+            style={{
+              width: `${gaugePct * 100}%`,
+              backgroundColor: gaugeOver ? '#ef4444' : '#ffffff',
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }

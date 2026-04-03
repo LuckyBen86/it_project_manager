@@ -9,6 +9,7 @@ export interface JwtPayload {
   sub: string;
   email: string;
   role: string;
+  responsablePoleIds?: string[];
 }
 
 export function signAccessToken(payload: JwtPayload): string {

@@ -27,6 +27,7 @@ export default function ProjetDetailPanel({ open, onClose, projet, isResponsable
   const [tacheForm, setTacheForm] = useState<{ open: boolean; tache?: Tache }>({ open: false });
   const [deleteTarget, setDeleteTarget] = useState<Tache | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | undefined>();
   // Gestion dépendances
   const [linkingTaskId, setLinkingTaskId] = useState<string | null>(null);
   const [selectedPrecedentId, setSelectedPrecedentId] = useState('');
@@ -39,6 +40,10 @@ export default function ProjetDetailPanel({ open, onClose, projet, isResponsable
       await api.delete(`/projets/${projet.id}/taches/${deleteTarget.id}`);
       onRefresh();
       setDeleteTarget(null);
+      setDeleteError(undefined);
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      if (msg) setDeleteError(msg);
     } finally {
       setDeleting(false);
     }
@@ -80,21 +85,47 @@ export default function ProjetDetailPanel({ open, onClose, projet, isResponsable
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUT_COLORS[projet.statut]}`}>
               {STATUT_LABELS[projet.statut]}
             </span>
-            {projet.categorie && (
-              <span className="text-xs text-gray-400 bg-white border border-gray-200 px-2 py-0.5 rounded-full">
-                {projet.categorie.nom}
+            {projet.pole && (
+              <span className="text-xs font-medium text-brand-700 bg-brand-50 border border-brand-200 px-2 py-0.5 rounded-full">
+                {projet.pole.nom}
               </span>
             )}
+            {projet.tags.map((t) => (
+              <span key={t.id} className="text-xs text-gray-400 bg-white border border-gray-200 px-2 py-0.5 rounded-full">
+                {t.nom}
+              </span>
+            ))}
+            {projet.logiciels?.map((l) => (
+              <span key={l.id} className="text-xs text-teal-700 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-full">
+                {l.nom}
+              </span>
+            ))}
           </div>
 
-          <div className="flex gap-4 text-xs text-gray-500 mt-1">
-            <span>Responsable : <strong className="text-gray-700">{projet.responsable.nom}</strong></span>
+          <div className="flex flex-wrap gap-4 text-xs text-gray-500 mt-1">
+            {projet.referent && (
+              <span>Référent : <strong className="text-gray-700">{projet.referent.nom}</strong></span>
+            )}
             {projet.dateButoire && (
               <span>Butoire : <strong className="text-gray-700">{format(new Date(projet.dateButoire), 'dd MMM yyyy', { locale: fr })}</strong></span>
             )}
             {projet.duree && (
-              <span>Durée : <strong className="text-gray-700">{projet.duree} j</strong></span>
+              <span>Durée estimée : <strong className="text-gray-700">{projet.duree} j</strong></span>
             )}
+            {(() => {
+              const dureeReelle = projet.taches.reduce((s, t) => s + (t.duree ?? 0), 0);
+              return dureeReelle > 0 ? (
+                <span>Durée réelle : <strong className="text-gray-700">{dureeReelle} j</strong></span>
+              ) : null;
+            })()}
+            {(() => {
+              const tempsConsomme = projet.taches.reduce(
+                (s, t) => s + (t.activites ?? []).reduce((sa, a) => sa + a.duree, 0), 0
+              );
+              return tempsConsomme > 0 ? (
+                <span>Temps consommé : <strong className="text-gray-700">{tempsConsomme.toFixed(2)} j</strong></span>
+              ) : null;
+            })()}
           </div>
 
           {projet.description && (
@@ -103,10 +134,11 @@ export default function ProjetDetailPanel({ open, onClose, projet, isResponsable
         </div>
 
         {/* Header tâches */}
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-gray-800">
+        <div className="flex items-center justify-between mb-3 -mx-1 px-3 py-2 bg-gray-100 rounded-lg border border-gray-200">
+          <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+            <span className="w-1 h-3.5 bg-brand-500 rounded-full inline-block" />
             Tâches
-            <span className="ml-2 text-gray-400 font-normal text-xs">
+            <span className="text-gray-400 font-normal normal-case">
               {projet.taches.filter((t) => t.statut === 'termine').length}/{projet.taches.length}
             </span>
           </h3>
@@ -180,7 +212,7 @@ export default function ProjetDetailPanel({ open, onClose, projet, isResponsable
                   {(tache.dependances.length > 0 || isResponsable) && (
                     <div className="mt-2 pt-2 border-t border-gray-100">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-xs text-gray-400">Après :</span>
+                        <span className="text-xs text-gray-400">Commence après la tâche :</span>
 
                         {tache.dependances.map((dep) => (
                           <span
@@ -253,15 +285,18 @@ export default function ProjetDetailPanel({ open, onClose, projet, isResponsable
         onSaved={onRefresh}
         projetId={projet.id}
         tache={tacheForm.tache}
+        projetDateDebut={projet.dateDebut}
+        projetTaches={projet.taches}
       />
 
       <ConfirmDialog
         open={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
+        onClose={() => { setDeleteTarget(null); setDeleteError(undefined); }}
         onConfirm={handleDeleteTache}
         title="Supprimer la tâche"
         message={`Confirmer la suppression de "${deleteTarget?.titre}" ? Cette action est irréversible.`}
         loading={deleting}
+        error={deleteError}
       />
     </>
   );

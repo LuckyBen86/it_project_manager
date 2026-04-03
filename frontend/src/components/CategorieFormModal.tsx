@@ -4,50 +4,50 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Modal from './Modal.tsx';
 import FormField, { inputClass, selectClass } from './FormField.tsx';
-import type { Categorie, TypeCategorie } from '../lib/types.ts';
+import type { Tag, TypeTag } from '../lib/types.ts';
 
-const categorieSchema = z.object({
+const tagSchema = z.object({
   nom: z.string().min(1, 'Nom requis').max(100),
   type: z.enum(['projet', 'tache'] as const),
 });
 
-type CategorieForm = z.infer<typeof categorieSchema>;
+type TagForm = z.infer<typeof tagSchema>;
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: CategorieForm) => Promise<void>;
-  categorie?: Categorie;
-  defaultType?: TypeCategorie;
+  onSubmit: (data: TagForm) => Promise<void>;
+  tag?: Tag;
+  defaultType?: TypeTag;
 }
 
-export default function CategorieFormModal({ open, onClose, onSubmit, categorie, defaultType = 'projet' }: Props) {
-  const isEdit = !!categorie;
+export default function CategorieFormModal({ open, onClose, onSubmit, tag, defaultType = 'projet' }: Props) {
+  const isEdit = !!tag;
 
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<CategorieForm>({ resolver: zodResolver(categorieSchema) });
+  } = useForm<TagForm>({ resolver: zodResolver(tagSchema) });
 
   useEffect(() => {
     if (open) {
       reset(
-        categorie
-          ? { nom: categorie.nom, type: categorie.type }
+        tag
+          ? { nom: tag.nom, type: tag.type }
           : { nom: '', type: defaultType },
       );
     }
-  }, [open, categorie, defaultType, reset]);
+  }, [open, tag, defaultType, reset]);
 
-  const handleFormSubmit = async (data: CategorieForm) => {
+  const handleFormSubmit = async (data: TagForm) => {
     await onSubmit(data);
     onClose();
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={isEdit ? 'Modifier la catégorie' : 'Nouvelle catégorie'} size="sm">
+    <Modal open={open} onClose={onClose} title={isEdit ? 'Modifier le tag' : 'Nouveau tag'} size="sm">
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4" noValidate>
         <FormField label="Nom" error={errors.nom?.message} required>
           <input className={inputClass} {...register('nom')} placeholder="ex: Infrastructure" autoFocus />

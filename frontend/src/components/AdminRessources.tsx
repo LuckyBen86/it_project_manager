@@ -3,22 +3,21 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import api from '../lib/api.ts';
 import type { Ressource } from '../lib/types.ts';
+import { ROLE_LABELS } from '../lib/types.ts';
+import { usePoles } from '../hooks/usePoles.ts';
 import RessourceFormModal from './RessourceFormModal.tsx';
 import ConfirmDialog from './ConfirmDialog.tsx';
 import { useAuthStore } from '../store/auth.store.ts';
 
-const ROLE_COLORS = {
+const ROLE_COLORS: Record<string, string> = {
   responsable: 'bg-brand-50 text-brand-700',
   utilisateur: 'bg-gray-100 text-gray-600',
-};
-
-const ROLE_LABELS = {
-  responsable: 'Responsable',
-  utilisateur: 'Utilisateur',
+  direction_generale: 'bg-purple-50 text-purple-700',
 };
 
 export default function AdminRessources() {
   const currentUser = useAuthStore((s) => s.user);
+  const { poles } = usePoles();
   const [ressources, setRessources] = useState<Ressource[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<{ open: boolean; ressource?: Ressource }>({ open: false });
@@ -34,7 +33,7 @@ export default function AdminRessources() {
 
   useEffect(() => { void load(); }, [load]);
 
-  const handleSubmit = async (data: Partial<Ressource> & { password?: string }) => {
+  const handleSubmit = async (data: unknown) => {
     if (form.ressource) {
       await api.patch(`/ressources/${form.ressource.id}`, data);
     } else {
@@ -81,6 +80,7 @@ export default function AdminRessources() {
               <th className="px-5 py-3 text-left font-medium">Nom</th>
               <th className="px-5 py-3 text-left font-medium">Email</th>
               <th className="px-5 py-3 text-left font-medium">Rôle</th>
+              <th className="px-5 py-3 text-left font-medium">Pôles</th>
               <th className="px-5 py-3 text-left font-medium">Créé le</th>
               <th className="px-5 py-3 text-right font-medium">Actions</th>
             </tr>
@@ -103,9 +103,25 @@ export default function AdminRessources() {
                   </td>
                   <td className="px-5 py-3 text-gray-500">{r.email}</td>
                   <td className="px-5 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ROLE_COLORS[r.role]}`}>
-                      {ROLE_LABELS[r.role]}
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ROLE_COLORS[r.role] ?? 'bg-gray-100 text-gray-600'}`}>
+                      {ROLE_LABELS[r.role] ?? r.role}
                     </span>
+                  </td>
+                  <td className="px-5 py-3">
+                    <div className="flex flex-wrap gap-1">
+                      {(r.poles ?? []).map(({ pole }) => {
+                        const isGestion = (r.responsablePoles ?? []).some((rp) => rp.pole.id === pole.id);
+                        return (
+                          <span
+                            key={pole.id}
+                            className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isGestion ? 'bg-brand-100 text-brand-700 border border-brand-300' : 'bg-gray-100 text-gray-500'}`}
+                            title={isGestion ? 'Pôle de gestion' : undefined}
+                          >
+                            {pole.nom}
+                          </span>
+                        );
+                      })}
+                    </div>
                   </td>
                   <td className="px-5 py-3 text-gray-400 text-xs">
                     {format(new Date(r.createdAt), 'dd MMM yyyy', { locale: fr })}
@@ -140,6 +156,7 @@ export default function AdminRessources() {
         onClose={() => setForm({ open: false })}
         onSubmit={handleSubmit}
         ressource={form.ressource}
+        poles={poles}
       />
 
       <ConfirmDialog

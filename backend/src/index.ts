@@ -4,8 +4,16 @@ import authRoutes from './routes/auth.routes.js';
 import projetsRoutes from './routes/projets.routes.js';
 import tachesRoutes from './routes/taches.routes.js';
 import ressourcesRoutes from './routes/ressources.routes.js';
-import categoriesRoutes from './routes/categories.routes.js';
+import tagsRoutes from './routes/categories.routes.js';
 import activitesRoutes from './routes/activites.routes.js';
+import mesTachesRoutes from './routes/mes-taches.routes.js';
+import journalRoutes from './routes/journal.routes.js';
+import corbeilleRoutes from './routes/corbeille.routes.js';
+import logicielsRoutes from './routes/logiciels.routes.js';
+import demandesRoutes from './routes/demandes.routes.js';
+import mesDemandesRoutes from './routes/mes-demandes.routes.js';
+import syntheseRoutes from './routes/synthese.routes.js';
+import polesRoutes from './routes/poles.routes.js';
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
@@ -38,8 +46,16 @@ app.use('/auth', authRoutes);
 app.use('/projets', projetsRoutes);
 app.use('/projets/:projetId/taches', tachesRoutes);
 app.use('/ressources', ressourcesRoutes);
-app.use('/categories', categoriesRoutes);
+app.use('/tags', tagsRoutes);
 app.use('/activites', activitesRoutes);
+app.use('/mes-taches', mesTachesRoutes);
+app.use('/journal', journalRoutes);
+app.use('/corbeille', corbeilleRoutes);
+app.use('/logiciels', logicielsRoutes);
+app.use('/demandes', demandesRoutes);
+app.use('/mes-demandes', mesDemandesRoutes);
+app.use('/synthese', syntheseRoutes);
+app.use('/poles', polesRoutes);
 
 // 404
 app.use((_req, res) => res.status(404).json({ message: 'Route introuvable' }));

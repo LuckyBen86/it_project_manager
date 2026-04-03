@@ -9,6 +9,7 @@ datasource db {
 enum Role {
   responsable
   utilisateur
+  direction_generale
 }
 
 enum StatutProjet {
@@ -25,54 +26,163 @@ enum StatutTache {
   termine
 }
 
-enum TypeCategorie {
+enum TypeDemande {
+  terminer
+  modifier_duree
+  modifier_date_debut
+}
+
+enum StatutDemande {
+  en_attente
+  valide
+  refuse
+}
+
+enum TypeTag {
   projet
   tache
 }
 
-model Ressource {
-  id           String     @id @default(uuid())
-  nom          String
-  email        String     @unique
-  passwordHash String     @map("password_hash")
-  role         Role       @default(utilisateur)
-  createdAt    DateTime   @default(now()) @map("created_at")
+enum ActionType {
+  STATUT_PROJET
+  STATUT_TACHE
+  DATE_DEBUT_PROJET
+  DATE_DEBUT_TACHE
+  SUPPRESSION_PROJET
+  SUPPRESSION_TACHE
+  RESTAURATION_PROJET
+  RESTAURATION_TACHE
+}
 
-  projetsResponsable Projet[]        @relation("ResponsableProjet")
+model Pole {
+  id   String @id @default(uuid())
+  nom  String @unique
+
+  projets      Projet[]
+  ressources   RessourcePole[]
+  responsables ResponsablePole[]
+
+  @@map("poles")
+}
+
+model RessourcePole {
+  ressourceId String @map("ressource_id")
+  poleId      String @map("pole_id")
+
+  ressource Ressource @relation(fields: [ressourceId], references: [id], onDelete: Cascade)
+  pole      Pole      @relation(fields: [poleId], references: [id], onDelete: Cascade)
+
+  @@id([ressourceId, poleId])
+  @@map("ressource_poles")
+}
+
+model ResponsablePole {
+  ressourceId String @map("ressource_id")
+  poleId      String @map("pole_id")
+
+  ressource Ressource @relation(fields: [ressourceId], references: [id], onDelete: Cascade)
+  pole      Pole      @relation(fields: [poleId], references: [id], onDelete: Cascade)
+
+  @@id([ressourceId, poleId])
+  @@map("responsable_poles")
+}
+
+model Ressource {
+  id           String   @id @default(uuid())
+  nom          String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         Role     @default(utilisateur)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  responsablePoles ResponsablePole[]
+  poles            RessourcePole[]
+  projetsReferent  Projet[]           @relation("ReferentProjet")
   activites          Activite[]
   taches             TacheRessource[]
+  journalActions     JournalAction[]
+  projetsSupprimes   Projet[]           @relation("ProjetDeletedBy")
+  tachesSupprimes    Tache[]            @relation("TacheDeletedBy")
+  demandes           DemandeValidation[] @relation("DemandesAuteur")
 
   @@map("ressources")
 }
 
-model Categorie {
-  id      String        @id @default(uuid())
+model Tag {
+  id      String   @id @default(uuid())
   nom     String
-  type    TypeCategorie
+  type    TypeTag
 
-  projets Projet[]
-  taches  Tache[]
+  projets ProjetTag[]
+  taches  TacheTag[]
 
   @@unique([nom, type])
-  @@map("categories")
+  @@map("tags")
+}
+
+model ProjetTag {
+  projetId String @map("projet_id")
+  tagId    String @map("tag_id")
+
+  projet Projet @relation(fields: [projetId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([projetId, tagId])
+  @@map("projet_tags")
+}
+
+model TacheTag {
+  tacheId String @map("tache_id")
+  tagId   String @map("tag_id")
+
+  tache Tache @relation(fields: [tacheId], references: [id], onDelete: Cascade)
+  tag   Tag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([tacheId, tagId])
+  @@map("tache_tags")
+}
+
+model Logiciel {
+  id   String @id @default(uuid())
+  nom  String @unique
+
+  projets ProjetLogiciel[]
+
+  @@map("logiciels")
+}
+
+model ProjetLogiciel {
+  projetId   String @map("projet_id")
+  logicielId String @map("logiciel_id")
+
+  projet   Projet   @relation(fields: [projetId], references: [id], onDelete: Cascade)
+  logiciel Logiciel @relation(fields: [logicielId], references: [id], onDelete: Cascade)
+
+  @@id([projetId, logicielId])
+  @@map("projet_logiciels")
 }
 
 model Projet {
-  id            String       @id @default(uuid())
-  titre         String
-  description   String?
-  categorieId   String?      @map("categorie_id")
-  responsableId String       @map("responsable_id")
-  dateButoire   DateTime?    @map("date_butoire")
-  dateDebut     DateTime?    @map("date_debut")
-  duree         Int?
-  statut        StatutProjet @default(non_valide)
-  createdAt     DateTime     @default(now()) @map("created_at")
-  updatedAt     DateTime     @updatedAt @map("updated_at")
+  id          String       @id @default(uuid())
+  titre       String
+  description String?
+  poleId      String       @map("pole_id")
+  referentId  String?      @map("referent_id")
+  dateButoire DateTime?    @map("date_butoire")
+  dateDebut   DateTime?    @map("date_debut")
+  duree       Int?
+  statut      StatutProjet @default(non_valide)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  deletedAt   DateTime?    @map("deleted_at")
+  deletedById String?      @map("deleted_by_id")
 
-  categorie   Categorie?  @relation(fields: [categorieId], references: [id])
-  responsable Ressource   @relation("ResponsableProjet", fields: [responsableId], references: [id])
-  taches      Tache[]
+  pole      Pole           @relation(fields: [poleId], references: [id])
+  tags      ProjetTag[]
+  logiciels ProjetLogiciel[]
+  referent  Ressource?     @relation("ReferentProjet", fields: [referentId], references: [id])
+  deletedBy Ressource?     @relation("ProjetDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+  taches    Tache[]
 
   @@map("projets")
 }
@@ -82,21 +192,46 @@ model Tache {
   projetId    String      @map("projet_id")
   titre       String
   description String?
-  categorieId String?     @map("categorie_id")
-  dateDebut   DateTime?   @map("date_debut")
-  duree       Int?
-  statut      StatutTache @default(a_faire)
-  createdAt   DateTime    @default(now()) @map("created_at")
-  updatedAt   DateTime    @updatedAt @map("updated_at")
+  dateDebut            DateTime?   @map("date_debut")
+  dateButoire          DateTime?   @map("date_butoire")
+  duree                Int?
+  statut               StatutTache @default(a_faire)
+  enAttenteValidation  Boolean     @default(false) @map("en_attente_validation")
+  createdAt           DateTime    @default(now()) @map("created_at")
+  updatedAt           DateTime    @updatedAt @map("updated_at")
+  deletedAt           DateTime?   @map("deleted_at")
+  deletedById         String?     @map("deleted_by_id")
+  deletedWithProjetId String?     @map("deleted_with_projet_id")
 
+  tags        TacheTag[]
   projet      Projet            @relation(fields: [projetId], references: [id], onDelete: Cascade)
-  categorie   Categorie?        @relation(fields: [categorieId], references: [id])
+  deletedBy   Ressource?        @relation("TacheDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
   ressources  TacheRessource[]
   dependances TacheDependance[] @relation("TacheDependances")
   precedents  TacheDependance[] @relation("TachePrecedents")
   activites   Activite[]
+  demandes    DemandeValidation[]
 
   @@map("taches")
+}
+
+model DemandeValidation {
+  id                  String        @id @default(uuid())
+  tacheId             String        @map("tache_id")
+  auteurId            String        @map("auteur_id")
+  type                TypeDemande
+  statut              StatutDemande @default(en_attente)
+  valeurDemandee      String?       @map("valeur_demandee")
+  statutOrigine       String?       @map("statut_origine")
+  commentaireRefus    String?       @map("commentaire_refus")
+  archivedByAuteur    Boolean       @default(false) @map("archived_by_auteur")
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+
+  tache   Tache     @relation(fields: [tacheId], references: [id], onDelete: Cascade)
+  auteur  Ressource @relation("DemandesAuteur", fields: [auteurId], references: [id], onDelete: Cascade)
+
+  @@map("demande_validations")
 }
 
 model TacheDependance {
@@ -134,4 +269,20 @@ model Activite {
   tache     Tache?    @relation(fields: [tacheId], references: [id], onDelete: Cascade)
 
   @@map("activites")
+}
+
+model JournalAction {
+  id             String     @id @default(uuid())
+  action         ActionType
+  auteurId       String?    @map("auteur_id")
+  auteurNom      String     @map("auteur_nom")
+  entityId       String     @map("entity_id")
+  entityTitre    String     @map("entity_titre")
+  ancienneValeur String?    @map("ancienne_valeur")
+  nouvelleValeur String?    @map("nouvelle_valeur")
+  createdAt      DateTime   @default(now()) @map("created_at")
+
+  auteur Ressource? @relation(fields: [auteurId], references: [id], onDelete: SetNull)
+
+  @@map("journal_actions")
 }

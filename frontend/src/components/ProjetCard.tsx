@@ -35,34 +35,49 @@ export default function ProjetCard({ projet, draggable, onEdit, onDelete, onOpen
       ref={setNodeRef}
       style={style}
       {...(draggable ? { ...attributes, ...listeners } : {})}
-      className={`bg-white border border-gray-200 rounded-lg p-3 shadow-sm select-none group ${
+      className={`bg-white border border-gray-200 rounded-lg p-2 shadow-sm select-none group ${
         draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
       }`}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start justify-between gap-1.5">
         <button
-          className="text-sm font-semibold text-gray-900 text-left line-clamp-2 hover:text-brand-600 transition-colors"
+          className="text-xs font-semibold text-gray-900 text-left line-clamp-2 leading-snug hover:text-brand-600 transition-colors"
           onMouseDown={stopPropagation}
           onClick={(e) => { e.stopPropagation(); onOpen?.(projet); }}
         >
           {projet.titre}
         </button>
-        <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${STATUT_COLORS[projet.statut]}`}>
-          {STATUT_LABELS[projet.statut]}
-        </span>
+        <div className="flex items-center gap-1 shrink-0">
+          {projet.pole && (
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full font-medium leading-none bg-brand-50 text-brand-700 border border-brand-200">
+              {projet.pole.nom}
+            </span>
+          )}
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium leading-none ${STATUT_COLORS[projet.statut]}`}>
+            {STATUT_LABELS[projet.statut]}
+          </span>
+        </div>
       </div>
 
-      <p className="mt-1 text-xs text-gray-500 truncate">{projet.responsable.nom}</p>
+      {projet.tags.length > 0 && (
+        <div className="mt-1 flex flex-wrap gap-1">
+          {projet.tags.map((t) => (
+            <span key={t.id} className="text-[9px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 leading-none">
+              {t.nom}
+            </span>
+          ))}
+        </div>
+      )}
 
       {projet.dateButoire && (
-        <p className="mt-1 text-xs text-gray-400">
+        <p className="mt-1 text-[10px] leading-none text-gray-400">
           Butoire : {format(new Date(projet.dateButoire), 'dd MMM yyyy', { locale: fr })}
         </p>
       )}
 
       {totalTaches > 0 && (
-        <div className="mt-2">
-          <div className="flex justify-between text-xs text-gray-400 mb-1">
+        <div className="mt-1.5">
+          <div className="flex justify-between text-[10px] leading-none text-gray-400 mb-1">
             <span>Tâches</span>
             <span>{terminees}/{totalTaches}</span>
           </div>
@@ -78,13 +93,13 @@ export default function ProjetCard({ projet, draggable, onEdit, onDelete, onOpen
       {/* Actions responsable */}
       {(onEdit || onDelete) && (
         <div
-          className="mt-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="mt-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
           onMouseDown={stopPropagation}
         >
           {onEdit && (
             <button
               onClick={(e) => { e.stopPropagation(); onEdit(projet); }}
-              className="text-xs px-2 py-1 text-gray-500 hover:text-brand-600 hover:bg-brand-50 rounded transition-colors"
+              className="text-[10px] px-1.5 py-0.5 text-gray-500 hover:text-brand-600 hover:bg-brand-50 rounded transition-colors"
             >
               Modifier
             </button>
@@ -92,7 +107,7 @@ export default function ProjetCard({ projet, draggable, onEdit, onDelete, onOpen
           {onDelete && (
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(projet); }}
-              className="text-xs px-2 py-1 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+              className="text-[10px] px-1.5 py-0.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
             >
               Supprimer
             </button>

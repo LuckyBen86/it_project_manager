@@ -8,6 +8,7 @@ interface Props {
   message: string;
   confirmLabel?: string;
   loading?: boolean;
+  error?: string;
 }
 
 export default function ConfirmDialog({
@@ -18,10 +19,14 @@ export default function ConfirmDialog({
   message,
   confirmLabel = 'Supprimer',
   loading = false,
+  error,
 }: Props) {
   return (
     <Modal open={open} onClose={onClose} title={title} size="sm">
-      <p className="text-sm text-gray-600 mb-6">{message}</p>
+      <p className="text-sm text-gray-600 mb-4">{message}</p>
+      {error && (
+        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">{error}</p>
+      )}
       <div className="flex justify-end gap-2">
         <button
           onClick={onClose}
@@ -32,7 +37,7 @@ export default function ConfirmDialog({
         </button>
         <button
           onClick={onConfirm}
-          disabled={loading}
+          disabled={loading || !!error}
           className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors"
         >
           {loading ? 'Suppression...' : confirmLabel}

@@ -1,23 +1,31 @@
 import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Modal from './Modal.tsx';
 import FormField, { inputClass, selectClass } from './FormField.tsx';
-import type { Ressource } from '../lib/types.ts';
+import TokenField from './TokenField.tsx';
+import type { Ressource, Pole } from '../lib/types.ts';
+import { useAuthStore } from '../store/auth.store.ts';
+
+const ROLES = ['responsable', 'utilisateur', 'direction_generale'] as const;
 
 const createSchema = z.object({
   nom: z.string().min(1, 'Nom requis').max(255),
   email: z.string().email('Email invalide'),
   password: z.string().min(8, '8 caractères minimum'),
-  role: z.enum(['responsable', 'utilisateur'] as const),
+  role: z.enum(ROLES),
+  poleIds: z.array(z.string()).optional(),
+  responsablePoleIds: z.array(z.string()).optional(),
 });
 
 const editSchema = z.object({
   nom: z.string().min(1, 'Nom requis').max(255),
   email: z.string().email('Email invalide'),
   password: z.string().min(8, '8 caractères minimum').optional().or(z.literal('')),
-  role: z.enum(['responsable', 'utilisateur'] as const),
+  role: z.enum(ROLES),
+  poleIds: z.array(z.string()).optional(),
+  responsablePoleIds: z.array(z.string()).optional(),
 });
 
 type CreateForm = z.infer<typeof createSchema>;
@@ -29,40 +37,58 @@ interface Props {
   onClose: () => void;
   onSubmit: (data: RessourceForm) => Promise<void>;
   ressource?: Ressource;
+  poles?: Pole[];
 }
 
-export default function RessourceFormModal({ open, onClose, onSubmit, ressource }: Props) {
+export default function RessourceFormModal({ open, onClose, onSubmit, ressource, poles = [] }: Props) {
   const isEdit = !!ressource;
+  const currentUserRole = useAuthStore((s) => s.user?.role);
+  const isDG = currentUserRole === 'direction_generale';
 
   const {
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<RessourceForm>({
     resolver: zodResolver(isEdit ? editSchema : createSchema),
   });
 
+  const watchedRole = watch('role');
+  const watchedPoleIds = watch('poleIds') ?? [];
+  const watchedResponsablePoleIds = watch('responsablePoleIds') ?? [];
+
   useEffect(() => {
     if (open) {
       reset(
         ressource
-          ? { nom: ressource.nom, email: ressource.email, password: '', role: ressource.role }
-          : { nom: '', email: '', password: '', role: 'utilisateur' },
+          ? {
+              nom: ressource.nom,
+              email: ressource.email,
+              password: '',
+              role: ressource.role,
+              poleIds: (ressource.poles ?? []).map((p) => p.pole.id),
+              responsablePoleIds: (ressource.responsablePoles ?? []).map((p) => p.pole.id),
+            }
+          : { nom: '', email: '', password: '', role: 'utilisateur', poleIds: [], responsablePoleIds: [] },
       );
     }
   }, [open, ressource, reset]);
 
   const handleFormSubmit = async (data: RessourceForm) => {
+    const payload = { ...data };
     // Ne pas envoyer un mot de passe vide en édition
     if (isEdit && !data.password) {
-      const { password: _, ...rest } = data as EditForm;
-      await onSubmit(rest as RessourceForm);
-    } else {
-      await onSubmit(data);
+      delete (payload as EditForm).password;
     }
+    await onSubmit(payload);
     onClose();
   };
+
+  const poleItems = poles.map((p) => ({ id: p.id, nom: p.nom }));
 
   return (
     <Modal open={open} onClose={onClose} title={isEdit ? 'Modifier la ressource' : 'Nouvelle ressource'} size="sm">
@@ -93,8 +119,45 @@ export default function RessourceFormModal({ open, onClose, onSubmit, ressource 
           <select className={selectClass} {...register('role')}>
             <option value="utilisateur">Utilisateur (lecture seule)</option>
             <option value="responsable">Responsable (écriture)</option>
+            {isDG && <option value="direction_generale">Direction générale</option>}
           </select>
         </FormField>
+
+        {/* Pôles — DG uniquement */}
+        {isDG && poles.length > 0 && (
+          <FormField label="Pôles d'appartenance">
+            <Controller
+              name="poleIds"
+              control={control}
+              render={() => (
+                <TokenField
+                  items={poleItems}
+                  selectedIds={watchedPoleIds as string[]}
+                  onChange={(ids) => setValue('poleIds', ids)}
+                  placeholder="+ Pôle"
+                />
+              )}
+            />
+          </FormField>
+        )}
+
+        {/* Pôles de gestion — DG uniquement, seulement si rôle responsable */}
+        {isDG && watchedRole === 'responsable' && (
+          <FormField label="Pôles de gestion">
+            <Controller
+              name="responsablePoleIds"
+              control={control}
+              render={() => (
+                <TokenField
+                  items={poleItems}
+                  selectedIds={watchedResponsablePoleIds as string[]}
+                  onChange={(ids) => setValue('responsablePoleIds', ids)}
+                  placeholder="+ Pôle de gestion"
+                />
+              )}
+            />
+          </FormField>
+        )}
 
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <button

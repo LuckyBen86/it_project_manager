@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
-export const createCategorieSchema = z.object({
+export const createTagSchema = z.object({
   nom: z.string().min(1, 'Nom requis').max(100),
   type: z.enum(['projet', 'tache']),
 });
 
-export const updateCategorieSchema = z.object({
+export const updateTagSchema = z.object({
   nom: z.string().min(1).max(100),
 });
 
-export type CreateCategorieInput = z.infer<typeof createCategorieSchema>;
+export type CreateTagInput = z.infer<typeof createTagSchema>;

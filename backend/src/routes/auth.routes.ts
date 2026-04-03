@@ -7,6 +7,20 @@ import { loginSchema, refreshSchema } from '../schemas/auth.schema.js';
 
 const router = Router();
 
+async function buildPayload(ressource: { id: string; email: string; role: string }) {
+  const responsablePoles = await prisma.responsablePole.findMany({
+    where: { ressourceId: ressource.id },
+    select: { poleId: true },
+  });
+  const responsablePoleIds = responsablePoles.map((rp) => rp.poleId);
+  return {
+    sub: ressource.id,
+    email: ressource.email,
+    role: ressource.role,
+    responsablePoleIds: responsablePoleIds.length ? responsablePoleIds : undefined,
+  };
+}
+
 // POST /auth/login
 router.post('/login', validate(loginSchema), async (req: Request, res: Response): Promise<void> => {
   const { email, password } = req.body;
@@ -23,7 +37,7 @@ router.post('/login', validate(loginSchema), async (req: Request, res: Response)
     return;
   }
 
-  const payload = { sub: ressource.id, email: ressource.email, role: ressource.role };
+  const payload = await buildPayload(ressource);
   const accessToken = signAccessToken(payload);
   const refreshToken = signRefreshToken({ sub: ressource.id });
 
@@ -46,7 +60,7 @@ router.post('/refresh', validate(refreshSchema), async (req: Request, res: Respo
       return;
     }
 
-    const payload = { sub: ressource.id, email: ressource.email, role: ressource.role };
+    const payload = await buildPayload(ressource);
     const newAccessToken = signAccessToken(payload);
     const newRefreshToken = signRefreshToken({ sub: ressource.id });
 

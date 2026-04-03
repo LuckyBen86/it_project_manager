@@ -26,12 +26,12 @@ export default function KanbanColonne({ statut, projets, draggable, onEdit, onDe
 
   return (
     <div
-      className={`flex flex-col min-w-[260px] max-w-[280px] bg-gray-50 rounded-xl border-t-4 ${COLONNE_COLORS[statut]} transition-colors ${
+      className={`flex flex-col flex-1 min-w-0 bg-gray-50 rounded-xl border-t-4 ${COLONNE_COLORS[statut]} transition-colors ${
         isOver ? 'bg-brand-50' : ''
       }`}
     >
-      <div className="px-3 py-2 flex items-center justify-between">
-        <span className="text-sm font-semibold text-gray-700">{STATUT_LABELS[statut]}</span>
+      <div className="px-2.5 py-1.5 flex items-center justify-between">
+        <span className="text-xs font-semibold text-gray-700">{STATUT_LABELS[statut]}</span>
         <span className="text-xs text-gray-400 bg-white px-2 py-0.5 rounded-full border border-gray-200">
           {projets.length}
         </span>

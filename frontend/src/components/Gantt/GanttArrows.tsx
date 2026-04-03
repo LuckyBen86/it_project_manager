@@ -1,4 +1,4 @@
-import { dateToOffset, businessDaysWidth, computeTaskStartDates } from '../../lib/gantt.ts';
+import { dateToOffset, businessDaysWidth, computeTaskStartDates, sortTasksTopologically } from '../../lib/gantt.ts';
 import type { Projet } from '../../lib/types.ts';
 
 const HEADER_H = 40;
@@ -66,22 +66,21 @@ export default function GanttArrows({
     if (!expanded) continue;
 
     const projetDateDebut = projet.dateDebut ? new Date(projet.dateDebut) : null;
-    const taskStartDates = projetDateDebut
-      ? computeTaskStartDates(projet.taches, projetDateDebut)
-      : null;
+    const sortedTaches = sortTasksTopologically(projet.taches);
+    const taskStartDates = computeTaskStartDates(sortedTaches, projetDateDebut ?? new Date());
 
     const taskYMap = new Map<string, number>();
 
-    if (projet.taches.length === 0) {
+    if (sortedTaches.length === 0) {
       currentY += TASK_ROW_H;
     } else {
-      for (const tache of projet.taches) {
+      for (const tache of sortedTaches) {
         taskYMap.set(tache.id, currentY + TASK_ROW_H / 2);
         currentY += TASK_ROW_H;
       }
 
       if (taskStartDates) {
-        for (const tache of projet.taches) {
+        for (const tache of sortedTaches) {
           if (!tache.duree) continue;
           const tacheStart = taskStartDates.get(tache.id);
           if (!tacheStart) continue;

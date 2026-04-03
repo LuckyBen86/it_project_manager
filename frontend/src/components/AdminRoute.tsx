@@ -7,6 +7,6 @@ interface Props {
 
 export default function AdminRoute({ children }: Props) {
   const user = useAuthStore((s) => s.user);
-  if (user?.role !== 'responsable') return <Navigate to="/" replace />;
+  if (user?.role !== 'responsable' && user?.role !== 'direction_generale') return <Navigate to="/" replace />;
   return <>{children}</>;
 }

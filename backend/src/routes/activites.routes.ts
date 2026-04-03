@@ -1,8 +1,10 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma.js';
-import { authenticate, requireRole } from '../middleware/auth.middleware.js';
+import { authenticate, requireRole, AuthRequest } from '../middleware/auth.middleware.js';
 import { validate } from '../middleware/validate.middleware.js';
 import { createActiviteSchema, updateActiviteSchema } from '../schemas/activite.schema.js';
+import { logAction } from '../lib/journal.js';
+import { STATUT_LABELS_FR } from '../lib/labels.js';
 
 const router = Router();
 router.use(authenticate);
@@ -21,7 +23,7 @@ router.get('/', async (_req, res: Response): Promise<void> => {
 });
 
 // POST /activites — responsable uniquement
-router.post('/', requireRole('responsable'), validate(createActiviteSchema), async (req, res: Response): Promise<void> => {
+router.post('/', requireRole('responsable'), validate(createActiviteSchema), async (req: AuthRequest, res: Response): Promise<void> => {
   const ressource = await prisma.ressource.findUnique({ where: { id: req.body.ressourceId } });
   if (!ressource) { res.status(404).json({ message: 'Ressource introuvable' }); return; }
 
@@ -29,6 +31,35 @@ router.post('/', requireRole('responsable'), validate(createActiviteSchema), asy
     data: req.body,
     include: ACTIVITE_INCLUDE,
   });
+
+  // Si l'activité est rattachée à une tâche avec du temps, passer le projet de "planifie" à "en_cours"
+  if (req.body.tacheId && req.body.duree > 0) {
+    const tache = await prisma.tache.findUnique({
+      where: { id: req.body.tacheId },
+      select: { projetId: true },
+    });
+    if (tache?.projetId) {
+      const projet = await prisma.projet.findUnique({
+        where: { id: tache.projetId },
+        select: { id: true, titre: true, statut: true },
+      });
+      if (projet?.statut === 'planifie') {
+        await prisma.projet.update({
+          where: { id: projet.id },
+          data: { statut: 'en_cours' },
+        });
+        await logAction({
+          auteurId: req.user!.sub,
+          action: 'STATUT_PROJET',
+          entityId: projet.id,
+          entityTitre: projet.titre,
+          ancienneValeur: STATUT_LABELS_FR['planifie'],
+          nouvelleValeur: STATUT_LABELS_FR['en_cours'],
+        });
+      }
+    }
+  }
+
   res.status(201).json(activite);
 });
 
