@@ -21,7 +21,7 @@ async function main() {
 
     const passwordHash = await bcrypt.hash(adminPassword, 12);
     await prisma.ressource.create({
-      data: { nom: adminNom, email: adminEmail, passwordHash, role: 'responsable' },
+      data: { nom: adminNom, email: adminEmail, passwordHash, role: 'direction_generale' },
     });
 
     console.log(`Seed : compte admin créé → ${adminEmail}`);
