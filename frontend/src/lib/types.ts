@@ -123,6 +123,7 @@ export interface Projet {
   duree?: number;
   statut: StatutProjet;
   taches: Tache[];
+  avancementProjet?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -186,4 +187,44 @@ export interface AuthUser {
   nom: string;
   email: string;
   role: Role;
+}
+
+export interface SearchResultProjet {
+  id: string;
+  titre: string;
+  pole?: Pick<Pole, 'nom'>;
+}
+
+export interface SearchResultTache {
+  id: string;
+  titre: string;
+  projetTitre: string;
+}
+
+export interface SearchResults {
+  projets: SearchResultProjet[];
+  taches: SearchResultTache[];
+}
+
+export interface AppNotification {
+  id: string;
+  type: string;
+  titre: string;
+  projetTitre?: string;
+}
+
+export interface NotificationsResponse {
+  count: number;
+  items: AppNotification[];
+}
+
+export interface ChargeRow {
+  ressourceId: string;
+  ressourceNom: string;
+  workload: Record<string, number>;
+}
+
+export interface ChargeData {
+  weeks: string[];
+  rows: ChargeRow[];
 }
