@@ -10,6 +10,7 @@ export interface JwtPayload {
   email: string;
   role: string;
   responsablePoleIds?: string[];
+  iat?: number;
 }
 
 export function signAccessToken(payload: JwtPayload): string {

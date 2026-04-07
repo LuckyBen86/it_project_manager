@@ -13,6 +13,7 @@ psql "$DATABASE_URL" -f /app/prisma/migrate-responsable-multi-poles.sql || true
 psql "$DATABASE_URL" -f /app/prisma/migrate-logiciel-to-categorie-and-poles.sql || true
 psql "$DATABASE_URL" -f /app/prisma/migrate-add-demandes-validation.sql || true
 psql "$DATABASE_URL" -f /app/prisma/migrate-add-date-butoire-tache.sql || true
+psql "$DATABASE_URL" -f /app/prisma/migrations/20260407000000_add_logged_out_at/migration.sql || true
 
 echo "→ Seed initial..."
 node dist/seed.js || true
