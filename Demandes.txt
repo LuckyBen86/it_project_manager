@@ -1,0 +1,13 @@
+vue kanban : 
+	masquer par défaut la colonne "terminé". 
+	Ajouter dans les filtres une coche "afficher les projets "terminé". Si on la coche, cela fait apparaitre dans le kanban la colonne "terminé".
+
+vue gantt : 
+	le poignée pour alonger la durée doit être plus grosse car il est difficile de cliquer dessus facilement.
+	supprimer le bouton de modification qui apparait au survol des projets ou taches.
+	supprimer le picto drapeau de la date butoire. 
+	Epaissir legerement le trait vertical qui symbolise la date butoire. Le trait vertical symbolisant la date du jour doit être gris clair.
+
+Administration :
+	les tags peuvent désormais appartenir à un ou plusieurs pôles, comme les catégories. 
+	il faut pouvoir filtrer l'affichage des listes sur un ou plusieurs poles
