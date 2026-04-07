@@ -14,6 +14,9 @@ import demandesRoutes from './routes/demandes.routes.js';
 import mesDemandesRoutes from './routes/mes-demandes.routes.js';
 import syntheseRoutes from './routes/synthese.routes.js';
 import polesRoutes from './routes/poles.routes.js';
+import searchRoutes from './routes/search.routes.js';
+import notificationsRoutes from './routes/notifications.routes.js';
+import chargeRoutes from './routes/charge.routes.js';
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
@@ -56,6 +59,9 @@ app.use('/demandes', demandesRoutes);
 app.use('/mes-demandes', mesDemandesRoutes);
 app.use('/synthese', syntheseRoutes);
 app.use('/poles', polesRoutes);
+app.use('/search', searchRoutes);
+app.use('/notifications', notificationsRoutes);
+app.use('/charge', chargeRoutes);
 
 // 404
 app.use((_req, res) => res.status(404).json({ message: 'Route introuvable' }));
