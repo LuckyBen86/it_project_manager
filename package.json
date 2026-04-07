@@ -1,0 +1,30 @@
+{
+  "name": "it-project-manager",
+  "version": "1.0.0",
+  "description": "Application web de gestion de projets pour service IT — Vue Kanban + Gantt interactif.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test:e2e": "playwright test --reporter=line",
+    "test:e2e:live": "cross-env HEADED=true playwright test --reporter=line",
+    "test:e2e:report": "playwright show-report e2e/report"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LuckyBen86/it_project_manager.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/LuckyBen86/it_project_manager/issues"
+  },
+  "homepage": "https://github.com/LuckyBen86/it_project_manager#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "cross-env": "^10.1.0"
+  }
+}

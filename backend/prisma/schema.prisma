@@ -1,0 +1,327 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  responsable
+  utilisateur
+  direction_generale
+}
+
+enum StatutProjet {
+  non_valide
+  a_planifier
+  planifie
+  en_cours
+  termine
+}
+
+enum StatutTache {
+  a_faire
+  en_cours
+  termine
+}
+
+enum TypeDemande {
+  terminer
+  modifier_duree
+  modifier_date_debut
+}
+
+enum StatutDemande {
+  en_attente
+  valide
+  refuse
+}
+
+enum TypeTag {
+  projet
+  tache
+}
+
+enum ActionType {
+  STATUT_PROJET
+  STATUT_TACHE
+  DATE_DEBUT_PROJET
+  DATE_DEBUT_TACHE
+  SUPPRESSION_PROJET
+  SUPPRESSION_TACHE
+  RESTAURATION_PROJET
+  RESTAURATION_TACHE
+}
+
+model Pole {
+  id   String @id @default(uuid())
+  nom  String @unique
+
+  projets      Projet[]
+  ressources   RessourcePole[]
+  responsables ResponsablePole[]
+  categories   CategoriePolе[]
+  tags         TagPole[]
+
+  @@map("poles")
+}
+
+model RessourcePole {
+  ressourceId String @map("ressource_id")
+  poleId      String @map("pole_id")
+
+  ressource Ressource @relation(fields: [ressourceId], references: [id], onDelete: Cascade)
+  pole      Pole      @relation(fields: [poleId], references: [id], onDelete: Cascade)
+
+  @@id([ressourceId, poleId])
+  @@map("ressource_poles")
+}
+
+model ResponsablePole {
+  ressourceId String @map("ressource_id")
+  poleId      String @map("pole_id")
+
+  ressource Ressource @relation(fields: [ressourceId], references: [id], onDelete: Cascade)
+  pole      Pole      @relation(fields: [poleId], references: [id], onDelete: Cascade)
+
+  @@id([ressourceId, poleId])
+  @@map("responsable_poles")
+}
+
+model Ressource {
+  id           String   @id @default(uuid())
+  nom          String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         Role     @default(utilisateur)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  responsablePoles ResponsablePole[]
+  poles            RessourcePole[]
+  projetsReferent  Projet[]           @relation("ReferentProjet")
+  activites          Activite[]
+  taches             TacheRessource[]
+  journalActions     JournalAction[]
+  projetsSupprimes   Projet[]           @relation("ProjetDeletedBy")
+  tachesSupprimes    Tache[]            @relation("TacheDeletedBy")
+  demandes           DemandeValidation[] @relation("DemandesAuteur")
+
+  @@map("ressources")
+}
+
+model Tag {
+  id      String @id @default(uuid())
+  nom     String @unique
+
+  projets ProjetTag[]
+  taches  TacheTag[]
+  poles   TagPole[]
+  types   TagType[]
+
+  @@map("tags")
+}
+
+model TagType {
+  tagId String  @map("tag_id")
+  type  TypeTag
+
+  tag Tag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([tagId, type])
+  @@map("tag_types")
+}
+
+model TagPole {
+  tagId  String @map("tag_id")
+  poleId String @map("pole_id")
+
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  pole Pole @relation(fields: [poleId], references: [id], onDelete: Cascade)
+
+  @@id([tagId, poleId])
+  @@map("tag_poles")
+}
+
+model ProjetTag {
+  projetId String @map("projet_id")
+  tagId    String @map("tag_id")
+
+  projet Projet @relation(fields: [projetId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([projetId, tagId])
+  @@map("projet_tags")
+}
+
+model TacheTag {
+  tacheId String @map("tache_id")
+  tagId   String @map("tag_id")
+
+  tache Tache @relation(fields: [tacheId], references: [id], onDelete: Cascade)
+  tag   Tag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([tacheId, tagId])
+  @@map("tache_tags")
+}
+
+model Categorie {
+  id   String @id @default(uuid())
+  nom  String @unique
+
+  projets ProjetCategorie[]
+  poles   CategoriePolе[]
+
+  @@map("categories")
+}
+
+model CategoriePolе {
+  categorieId String @map("categorie_id")
+  poleId      String @map("pole_id")
+
+  categorie Categorie @relation(fields: [categorieId], references: [id], onDelete: Cascade)
+  pole      Pole      @relation(fields: [poleId], references: [id], onDelete: Cascade)
+
+  @@id([categorieId, poleId])
+  @@map("categorie_poles")
+}
+
+model ProjetCategorie {
+  projetId    String @map("projet_id")
+  categorieId String @map("categorie_id")
+
+  projet    Projet    @relation(fields: [projetId], references: [id], onDelete: Cascade)
+  categorie Categorie @relation(fields: [categorieId], references: [id], onDelete: Cascade)
+
+  @@id([projetId, categorieId])
+  @@map("projet_categories")
+}
+
+model Projet {
+  id          String       @id @default(uuid())
+  titre       String
+  description String?
+  poleId      String       @map("pole_id")
+  referentId  String?      @map("referent_id")
+  dateButoire DateTime?    @map("date_butoire")
+  dateDebut   DateTime?    @map("date_debut")
+  duree       Int?
+  statut      StatutProjet @default(non_valide)
+  avancementProjet     Int     @default(0)    @map("avancement_projet")
+  avancementAutoProjet Boolean @default(true) @map("avancement_auto_projet")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  deletedAt   DateTime?    @map("deleted_at")
+  deletedById String?      @map("deleted_by_id")
+
+  pole       Pole             @relation(fields: [poleId], references: [id])
+  tags       ProjetTag[]
+  categories ProjetCategorie[]
+  referent  Ressource?     @relation("ReferentProjet", fields: [referentId], references: [id])
+  deletedBy Ressource?     @relation("ProjetDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+  taches    Tache[]
+
+  @@map("projets")
+}
+
+model Tache {
+  id          String      @id @default(uuid())
+  projetId    String      @map("projet_id")
+  titre       String
+  description String?
+  dateDebut            DateTime?   @map("date_debut")
+  dateButoire          DateTime?   @map("date_butoire")
+  duree                Int?
+  statut               StatutTache @default(a_faire)
+  enAttenteValidation  Boolean     @default(false) @map("en_attente_validation")
+  avancementTache      Int         @default(0)    @map("avancement_tache")
+  avancementAutoTache  Boolean     @default(true) @map("avancement_auto_tache")
+  createdAt           DateTime    @default(now()) @map("created_at")
+  updatedAt           DateTime    @updatedAt @map("updated_at")
+  deletedAt           DateTime?   @map("deleted_at")
+  deletedById         String?     @map("deleted_by_id")
+  deletedWithProjetId String?     @map("deleted_with_projet_id")
+
+  tags        TacheTag[]
+  projet      Projet            @relation(fields: [projetId], references: [id], onDelete: Cascade)
+  deletedBy   Ressource?        @relation("TacheDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+  ressources  TacheRessource[]
+  dependances TacheDependance[] @relation("TacheDependances")
+  precedents  TacheDependance[] @relation("TachePrecedents")
+  activites   Activite[]
+  demandes    DemandeValidation[]
+
+  @@map("taches")
+}
+
+model DemandeValidation {
+  id                  String        @id @default(uuid())
+  tacheId             String        @map("tache_id")
+  auteurId            String        @map("auteur_id")
+  type                TypeDemande
+  statut              StatutDemande @default(en_attente)
+  valeurDemandee      String?       @map("valeur_demandee")
+  statutOrigine       String?       @map("statut_origine")
+  commentaireRefus    String?       @map("commentaire_refus")
+  archivedByAuteur    Boolean       @default(false) @map("archived_by_auteur")
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+
+  tache   Tache     @relation(fields: [tacheId], references: [id], onDelete: Cascade)
+  auteur  Ressource @relation("DemandesAuteur", fields: [auteurId], references: [id], onDelete: Cascade)
+
+  @@map("demande_validations")
+}
+
+model TacheDependance {
+  tacheId     String @map("tache_id")
+  precedentId String @map("precedent_id")
+
+  tache     Tache @relation("TacheDependances", fields: [tacheId], references: [id], onDelete: Cascade)
+  precedent Tache @relation("TachePrecedents", fields: [precedentId], references: [id], onDelete: Cascade)
+
+  @@id([tacheId, precedentId])
+  @@map("tache_dependances")
+}
+
+model TacheRessource {
+  tacheId     String @map("tache_id")
+  ressourceId String @map("ressource_id")
+
+  tache     Tache     @relation(fields: [tacheId], references: [id], onDelete: Cascade)
+  ressource Ressource @relation(fields: [ressourceId], references: [id], onDelete: Cascade)
+
+  @@id([tacheId, ressourceId])
+  @@map("tache_ressources")
+}
+
+model Activite {
+  id          String    @id @default(uuid())
+  description String
+  date        DateTime
+  duree       Float
+  ressourceId String    @map("ressource_id")
+  tacheId     String?   @map("tache_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  ressource Ressource @relation(fields: [ressourceId], references: [id])
+  tache     Tache?    @relation(fields: [tacheId], references: [id], onDelete: Cascade)
+
+  @@map("activites")
+}
+
+model JournalAction {
+  id             String     @id @default(uuid())
+  action         ActionType
+  auteurId       String?    @map("auteur_id")
+  auteurNom      String     @map("auteur_nom")
+  entityId       String     @map("entity_id")
+  entityTitre    String     @map("entity_titre")
+  ancienneValeur String?    @map("ancienne_valeur")
+  nouvelleValeur String?    @map("nouvelle_valeur")
+  createdAt      DateTime   @default(now()) @map("created_at")
+
+  auteur Ressource? @relation(fields: [auteurId], references: [id], onDelete: SetNull)
+
+  @@map("journal_actions")
+}
