@@ -5,6 +5,7 @@ import { validate } from '../middleware/validate.middleware.js';
 import { createActiviteSchema, updateActiviteSchema } from '../schemas/activite.schema.js';
 import { logAction } from '../lib/journal.js';
 import { STATUT_LABELS_FR } from '../lib/labels.js';
+import { maybeRecalculerTache } from '../lib/avancement.js';
 
 const router = Router();
 router.use(authenticate);
@@ -60,6 +61,8 @@ router.post('/', requireRole('responsable', 'direction_generale'), validate(crea
     }
   }
 
+  if (activite.tacheId) await maybeRecalculerTache(activite.tacheId);
+
   res.status(201).json(activite);
 });
 
@@ -73,6 +76,7 @@ router.patch('/:id', requireRole('responsable', 'direction_generale'), validate(
     data: req.body,
     include: ACTIVITE_INCLUDE,
   });
+  if (activite.tacheId) await maybeRecalculerTache(activite.tacheId);
   res.json(activite);
 });
 
@@ -82,6 +86,7 @@ router.delete('/:id', requireRole('responsable', 'direction_generale'), async (r
   if (!existing) { res.status(404).json({ message: 'Activité introuvable' }); return; }
 
   await prisma.activite.delete({ where: { id: req.params.id } });
+  if (existing.tacheId) await maybeRecalculerTache(existing.tacheId);
   res.status(204).send();
 });
 

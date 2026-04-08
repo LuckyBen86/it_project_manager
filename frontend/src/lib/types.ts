@@ -85,6 +85,8 @@ export interface Tache {
   duree?: number;
   statut: StatutTache;
   enAttenteValidation?: boolean;
+  avancementTache: number;
+  avancementAutoTache: boolean;
   ressources: TacheRessource[];
   dependances: TacheDependanceItem[];
   activites?: Activite[];
@@ -123,7 +125,8 @@ export interface Projet {
   duree?: number;
   statut: StatutProjet;
   taches: Tache[];
-  avancementProjet?: number;
+  avancementProjet: number;
+  avancementAutoProjet: boolean;
   createdAt: string;
   updatedAt: string;
 }

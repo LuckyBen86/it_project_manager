@@ -9,6 +9,7 @@ import {
 } from '../schemas/projet.schema.js';
 import { logAction } from '../lib/journal.js';
 import { STATUT_LABELS_FR, formatDateFr } from '../lib/labels.js';
+import { maybeRecalculerProjet } from '../lib/avancement.js';
 
 const router = Router();
 router.use(authenticate);
@@ -37,7 +38,26 @@ function flattenTags(obj: any): any {
     categories: (obj.categories ?? []).map((pc: any) => pc.categorie),
   };
   if (result.taches) {
-    result.taches = result.taches.map((t: any) => ({ ...t, tags: (t.tags ?? []).map((tt: any) => tt.tag) }));
+    result.taches = result.taches.map((t: any) => {
+      const tache = { ...t, tags: (t.tags ?? []).map((tt: any) => tt.tag) };
+      // Recalcul avancementTache en temps réel si auto activé
+      if (tache.avancementAutoTache && tache.duree && tache.duree > 0) {
+        const consomme = (tache.activites ?? []).reduce((s: number, a: any) => s + a.duree, 0);
+        tache.avancementTache = Math.min(100, Math.round((consomme / tache.duree) * 100));
+      }
+      return tache;
+    });
+  }
+  // Recalcul avancementProjet en temps réel si auto activé
+  if (result.avancementAutoProjet && result.taches) {
+    const avecDuree = result.taches.filter((t: any) => t.duree && t.duree > 0);
+    if (avecDuree.length > 0) {
+      const totalDuree = avecDuree.reduce((s: number, t: any) => s + t.duree, 0);
+      const pondere = avecDuree.reduce((s: number, t: any) => s + t.avancementTache * t.duree, 0);
+      result.avancementProjet = Math.round(pondere / totalDuree);
+    } else {
+      result.avancementProjet = 0;
+    }
   }
   return result;
 }
@@ -184,6 +204,11 @@ router.patch('/:id', validate(updateProjetSchema), async (req: AuthRequest & Req
         nouvelleValeur: nouveau ? formatDateFr(nouveau) : null,
       });
     }
+  }
+
+  // Si avancementAutoProjet activé (avant ou après update), recalculer depuis les tâches
+  if (projet.avancementAutoProjet || body.avancementAutoProjet === true) {
+    await maybeRecalculerProjet(projet.id);
   }
 
   res.json(flattenTags(projet));

@@ -6,6 +6,7 @@ import { validate } from '../middleware/validate.middleware.js';
 import { logAction } from '../lib/journal.js';
 import { STATUT_LABELS_FR } from '../lib/labels.js';
 import { createDemandeSchema } from '../schemas/demande.schema.js';
+import { maybeRecalculerTache } from '../lib/avancement.js';
 
 const router = Router();
 router.use((req, _res, next) => { console.log(`[mes-taches] ${req.method} ${req.path}`, JSON.stringify(req.body)); next(); });
@@ -56,6 +57,7 @@ router.post('/:tacheId/activites', validate(addActiviteSchema), async (req: Auth
     data: { description: req.body.description, date: req.body.date, duree: req.body.duree, ressourceId: req.user!.sub, tacheId },
     include: { ressource: { select: { id: true, nom: true, email: true } } },
   });
+  await maybeRecalculerTache(tacheId);
   res.status(201).json(activite);
 });
 
@@ -80,6 +82,7 @@ router.patch('/:tacheId/activites/:activiteId', validate(updateActiviteSchema), 
       data: req.body,
       include: { ressource: { select: { id: true, nom: true, email: true } } },
     });
+    await maybeRecalculerTache(tacheId);
     res.json(updated);
   } catch (err) {
     console.error('[PATCH activite error]', err);

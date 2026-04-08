@@ -78,13 +78,13 @@ export default function ProjetCard({ projet, draggable, onEdit, onDelete, onOpen
       {totalTaches > 0 && (
         <div className="mt-1.5">
           <div className="flex justify-between text-[10px] leading-none text-gray-400 mb-1">
-            <span>Tâches</span>
-            <span>{terminees}/{totalTaches}</span>
+            <span>Tâches {terminees}/{totalTaches}</span>
+            <span className="font-medium text-gray-600">{projet.avancementProjet}%</span>
           </div>
           <div className="h-1 bg-gray-100 rounded-full">
             <div
-              className="h-1 bg-brand-500 rounded-full transition-all"
-              style={{ width: `${(terminees / totalTaches) * 100}%` }}
+              className={`h-1 rounded-full transition-all ${projet.avancementProjet >= 100 ? 'bg-green-500' : projet.avancementProjet > 0 ? 'bg-brand-500' : 'bg-gray-100'}`}
+              style={{ width: `${projet.avancementProjet}%` }}
             />
           </div>
         </div>

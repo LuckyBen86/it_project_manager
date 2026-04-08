@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -64,6 +64,8 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
 
   const [localTaches, setLocalTaches] = useState<Tache[]>([]);
   const [tacheForm, setTacheForm]     = useState<{ open: boolean; tache?: Tache }>({ open: false });
+  const [avancementAutoProjet, setAvancementAutoProjet] = useState<boolean>(projet?.avancementAutoProjet ?? true);
+  const [avancementManuelProjet, setAvancementManuelProjet] = useState<number>(projet?.avancementProjet ?? 0);
   const [deleteTarget, setDeleteTarget] = useState<Tache | null>(null);
   const [deleting, setDeleting]         = useState(false);
   const [deleteError, setDeleteError]   = useState<string | undefined>();
@@ -92,6 +94,17 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
     r.poles?.some((p) => p.pole.id === (watchedPoleId || selectedPoleId))
   );
 
+  const avancementCalculeProjet = useMemo(() => {
+    if (!avancementAutoProjet) return 0;
+    const avecDuree = localTaches.filter((t) => t.duree && t.duree > 0);
+    if (avecDuree.length === 0) return 0;
+    const totalDuree = avecDuree.reduce((s, t) => s + (t.duree ?? 0), 0);
+    const pondere = avecDuree.reduce((s, t) => s + t.avancementTache * (t.duree ?? 0), 0);
+    return Math.round(pondere / totalDuree);
+  }, [avancementAutoProjet, localTaches]);
+
+  const avancementAfficheProjet = avancementAutoProjet ? avancementCalculeProjet : avancementManuelProjet;
+
   const dureeCalculee  = localTaches.reduce((s, t) => s + (t.duree ?? 0), 0);
   const dureeConsommee = localTaches.reduce(
     (s, t) => s + (t.activites ?? []).reduce((sa, a) => sa + a.duree, 0), 0,
@@ -100,6 +113,8 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
   useEffect(() => {
     if (open) {
       setLocalTaches(projet?.taches ?? []);
+      setAvancementAutoProjet(projet?.avancementAutoProjet ?? true);
+      setAvancementManuelProjet(projet?.avancementProjet ?? 0);
       const poleId = projet?.pole?.id ?? '';
       setSelectedPoleId(poleId);
       reset(
@@ -181,6 +196,8 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
       referentId:  referentId || undefined,
       dateButoire: data.dateButoire ? new Date(data.dateButoire).toISOString() : undefined,
       dateDebut:   data.dateDebut   ? new Date(data.dateDebut).toISOString()   : undefined,
+      avancementAutoProjet,
+      avancementProjet: avancementAutoProjet ? undefined : avancementManuelProjet,
     };
 
     if (isEdit) {
@@ -348,6 +365,50 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
                 </div>
               </div>
 
+              {/* Bloc avancement projet */}
+              <div className="p-3 bg-gray-50 rounded-lg border border-gray-100 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">% Avancement projet</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-gray-400">Calcul auto</span>
+                    <button
+                      type="button"
+                      onClick={() => setAvancementAutoProjet((v) => !v)}
+                      title={avancementAutoProjet ? 'Désactiver le calcul auto' : 'Activer le calcul auto'}
+                      className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none cursor-pointer ${avancementAutoProjet ? 'bg-brand-600' : 'bg-gray-200'}`}
+                    >
+                      <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${avancementAutoProjet ? 'translate-x-4' : 'translate-x-0'}`} />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${avancementAfficheProjet >= 100 ? 'bg-green-500' : avancementAfficheProjet > 0 ? 'bg-brand-500' : 'bg-gray-200'}`}
+                      style={{ width: `${avancementAfficheProjet}%` }}
+                    />
+                  </div>
+                  {avancementAutoProjet ? (
+                    <span className="text-sm font-semibold text-gray-800 w-10 text-right">
+                      {localTaches.some((t) => t.duree && t.duree > 0) ? `${avancementCalculeProjet}%` : '—'}
+                    </span>
+                  ) : (
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={avancementManuelProjet}
+                      onChange={(e) => setAvancementManuelProjet(Math.min(100, Math.max(0, Number(e.target.value))))}
+                      className="w-14 text-right text-sm font-semibold border border-gray-200 rounded-md px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-brand-400 bg-white"
+                    />
+                  )}
+                  {!avancementAutoProjet && <span className="text-xs text-gray-400">%</span>}
+                </div>
+                {avancementAutoProjet && localTaches.every((t) => !t.duree) && localTaches.length > 0 && (
+                  <p className="text-[10px] text-amber-600">Renseigner la durée des tâches pour activer le calcul automatique.</p>
+                )}
+              </div>
+
               <div className="flex items-center justify-between -mx-2 px-3 py-2 bg-gray-100 rounded-lg border border-gray-200">
                 <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
                   <span className="w-1 h-3.5 bg-brand-500 rounded-full inline-block" />
@@ -403,6 +464,36 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
                               </span>
                             )}
                           </div>
+                          {tache.duree && (() => {
+                            const consomme = (tache.activites ?? []).reduce((s, a) => s + a.duree, 0);
+                            const depasse = consomme > tache.duree;
+                            return (
+                              <div className="mt-1 space-y-0.5">
+                                <div className="flex items-center gap-1.5">
+                                  <div className="flex-1 h-1 bg-gray-100 rounded-full overflow-hidden">
+                                    <div
+                                      className={`h-full rounded-full transition-all ${depasse ? 'bg-red-500' : tache.avancementTache >= 100 ? 'bg-green-500' : tache.avancementTache > 0 ? 'bg-brand-400' : 'bg-gray-100'}`}
+                                      style={{ width: `${Math.min(100, tache.avancementTache)}%` }}
+                                    />
+                                  </div>
+                                  <span className={`text-[9px] w-6 text-right font-medium ${depasse ? 'text-red-500' : 'text-gray-400'}`}>
+                                    {tache.avancementTache}%
+                                  </span>
+                                  {depasse && (
+                                    <svg className="w-3 h-3 text-red-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                                    </svg>
+                                  )}
+                                </div>
+                                {consomme > 0 && (
+                                  <p className={`text-[9px] ${depasse ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
+                                    {consomme.toFixed(2)} j consommés / {tache.duree} j prévus
+                                    {depasse && ` (+${(consomme - tache.duree).toFixed(2)} j)`}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })()}
                           {tache.dependances.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1">
                               {tache.dependances.map((dep) => (

@@ -6,6 +6,7 @@ import { createTacheSchema, updateTacheSchema } from '../schemas/tache.schema.js
 import { createActiviteSchema } from '../schemas/activite.schema.js';
 import { logAction } from '../lib/journal.js';
 import { STATUT_LABELS_FR, formatDateFr } from '../lib/labels.js';
+import { maybeRecalculerTache, maybeRecalculerProjet } from '../lib/avancement.js';
 
 type TacheRequest = Request<{ projetId: string; id?: string }>;
 
@@ -132,6 +133,20 @@ router.patch('/:id', validate(updateTacheSchema), async (req: TacheRequest, res:
         ancienneValeur: ancien ? formatDateFr(ancien) : null,
         nouvelleValeur: nouveau ? formatDateFr(nouveau) : null,
       });
+    }
+  }
+
+  // Recalcul avancement : si auto activé, ou si duree/avancementAutoTache a changé
+  if (
+    tache.avancementAutoTache ||
+    req.body.avancementAutoTache === true ||
+    req.body.duree !== undefined
+  ) {
+    await maybeRecalculerTache(tache.id);
+  } else {
+    // Auto désactivé mais avancementTache modifié manuellement → recalculer le projet
+    if (req.body.avancementTache !== undefined) {
+      await maybeRecalculerProjet(req.params.projetId);
     }
   }
 
@@ -262,6 +277,8 @@ router.post('/:id/activites', requireRole('responsable', 'direction_generale'), 
     });
   }
 
+  await maybeRecalculerTache(tache.id);
+
   res.status(201).json(activite);
 });
 
@@ -271,6 +288,7 @@ router.delete('/:id/activites/:activiteId', requireRole('responsable', 'directio
   if (!existing) { res.status(404).json({ message: 'Activité introuvable' }); return; }
 
   await prisma.activite.delete({ where: { id: req.params.activiteId } });
+  await maybeRecalculerTache(req.params.id);
   res.status(204).send();
 });
 

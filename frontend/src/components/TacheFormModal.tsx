@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -86,6 +86,10 @@ export default function TacheFormModal({ open, onClose, onSaved, projetId, tache
   const [deletingActivite, setDeletingActivite] = useState(false);
   const [localDeps, setLocalDeps] = useState<TacheDependanceItem[]>([]);
 
+  // Avancement
+  const [avancementAuto, setAvancementAuto] = useState<boolean>(tache?.avancementAutoTache ?? true);
+  const [avancementManuel, setAvancementManuel] = useState<number>(tache?.avancementTache ?? 0);
+
   const {
     register,
     handleSubmit,
@@ -100,8 +104,18 @@ export default function TacheFormModal({ open, onClose, onSaved, projetId, tache
   });
 
   const selectedTagIds = watch('tagIds') ?? [];
+  const watchedDuree = watch('duree');
   const tagItems = tags.map((t) => ({ id: t.id, nom: t.nom }));
   const ressourceItems = ressources.map((r) => ({ id: r.id, nom: r.nom }));
+
+  // Calcul dynamique de l'avancement auto (même formule que le backend)
+  const avancementCalcule = useMemo(() => {
+    if (!avancementAuto || !watchedDuree || watchedDuree <= 0) return 0;
+    const total = activites.reduce((s, a) => s + a.duree, 0);
+    return Math.min(100, Math.round((total / watchedDuree) * 100));
+  }, [avancementAuto, activites, watchedDuree]);
+
+  const avancementAffiche = avancementAuto ? avancementCalcule : avancementManuel;
 
   const {
     register: registerAct,
@@ -120,6 +134,8 @@ export default function TacheFormModal({ open, onClose, onSaved, projetId, tache
     if (open) {
       setShowActiviteForm(false);
       setLocalDeps(tache?.dependances ?? []);
+      setAvancementAuto(tache?.avancementAutoTache ?? true);
+      setAvancementManuel(tache?.avancementTache ?? 0);
       reset(
         tache
           ? {
@@ -175,6 +191,8 @@ export default function TacheFormModal({ open, onClose, onSaved, projetId, tache
       duree: data.duree,
       dateDebut: data.dateDebut ? new Date(data.dateDebut).toISOString() : undefined,
       dateButoire: data.dateButoire ? new Date(data.dateButoire).toISOString() : undefined,
+      avancementAutoTache: avancementAuto,
+      avancementTache: avancementAuto ? undefined : avancementManuel,
     };
     if (isEdit) {
       await api.patch(`/projets/${projetId}/taches/${tache.id}`, payload);
@@ -314,6 +332,56 @@ export default function TacheFormModal({ open, onClose, onSaved, projetId, tache
               placeholder="+ Tag"
             />
           </FormField>
+
+          {/* Avancement */}
+          <div className="p-3 bg-gray-50 rounded-lg border border-gray-100 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">% Avancement</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-gray-400">Calcul auto</span>
+                <button
+                  type="button"
+                  disabled={!canManageActivites}
+                  onClick={() => setAvancementAuto((v) => !v)}
+                  title={canManageActivites ? (avancementAuto ? 'Désactiver le calcul auto' : 'Activer le calcul auto') : 'Réservé au responsable'}
+                  className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none ${
+                    avancementAuto ? 'bg-brand-600' : 'bg-gray-200'
+                  } ${!canManageActivites ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${avancementAuto ? 'translate-x-4' : 'translate-x-0'}`}
+                  />
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${avancementAffiche >= 100 ? 'bg-green-500' : avancementAffiche > 0 ? 'bg-brand-500' : 'bg-gray-200'}`}
+                  style={{ width: `${avancementAffiche}%` }}
+                />
+              </div>
+              {avancementAuto ? (
+                <span className="text-sm font-semibold text-gray-800 w-10 text-right">
+                  {watchedDuree && watchedDuree > 0 ? `${avancementCalcule}%` : '—'}
+                </span>
+              ) : (
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  disabled={!canManageActivites}
+                  value={avancementManuel}
+                  onChange={(e) => setAvancementManuel(Math.min(100, Math.max(0, Number(e.target.value))))}
+                  className={`w-14 text-right text-sm font-semibold border border-gray-200 rounded-md px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-brand-400 ${!canManageActivites ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'bg-white'}`}
+                />
+              )}
+              {!avancementAuto && <span className="text-xs text-gray-400">%</span>}
+            </div>
+            {avancementAuto && !watchedDuree && (
+              <p className="text-[10px] text-amber-600">Renseigner la durée pour activer le calcul automatique.</p>
+            )}
+          </div>
 
           <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
             <button

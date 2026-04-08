@@ -131,6 +131,20 @@ export default function ProjetDetailPanel({ open, onClose, projet, isResponsable
           {projet.description && (
             <p className="text-sm text-gray-600 mt-1">{projet.description}</p>
           )}
+
+          {/* Barre d'avancement projet */}
+          <div className="mt-2 pt-2 border-t border-gray-200">
+            <div className="flex justify-between text-[10px] text-gray-400 mb-1">
+              <span className="font-semibold uppercase tracking-wide">Avancement</span>
+              <span className="font-semibold text-gray-600">{projet.avancementProjet}%</span>
+            </div>
+            <div className="h-1.5 bg-gray-200 rounded-full">
+              <div
+                className={`h-1.5 rounded-full transition-all ${projet.avancementProjet >= 100 ? 'bg-green-500' : projet.avancementProjet > 0 ? 'bg-brand-500' : 'bg-gray-200'}`}
+                style={{ width: `${projet.avancementProjet}%` }}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Header tâches */}
@@ -188,6 +202,32 @@ export default function ProjetDetailPanel({ open, onClose, projet, isResponsable
                           <span>{tache.ressources.map((r) => r.ressource.nom).join(', ')}</span>
                         )}
                       </div>
+                      {tache.duree && (() => {
+                        const tempsConsomme = (tache.activites ?? []).reduce((s, a) => s + a.duree, 0);
+                        const depasse = tempsConsomme > tache.duree;
+                        const hasActivites = (tache.activites ?? []).length > 0;
+                        const pct = Math.min(tache.avancementTache, 100);
+                        return (
+                          <div className="mt-1.5">
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-1 bg-gray-100 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all ${depasse ? 'bg-red-500' : tache.avancementTache >= 100 ? 'bg-green-500' : tache.avancementTache > 0 ? 'bg-brand-400' : 'bg-gray-100'}`}
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                              <span className="text-[10px] text-gray-400 w-7 text-right">{tache.avancementTache}%</span>
+                              {depasse && <span className="text-red-500 text-[11px] leading-none">⚠</span>}
+                            </div>
+                            {hasActivites && (
+                              <p className={`text-[10px] mt-0.5 ${depasse ? 'text-red-500' : 'text-gray-400'}`}>
+                                {tempsConsomme.toFixed(2)} j consommés / {tache.duree} j prévus
+                                {depasse && <span className="font-medium"> (+{(tempsConsomme - tache.duree).toFixed(2)} j)</span>}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {isResponsable && (
