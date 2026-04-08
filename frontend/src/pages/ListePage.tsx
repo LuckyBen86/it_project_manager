@@ -156,21 +156,10 @@ export default function ListePage() {
       <div className="px-6 py-4 border-b border-gray-200 bg-white flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold text-gray-900">Projets</h2>
-            <div className="flex items-center rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
-              <button
-                onClick={() => navigate('/')}
-                className="px-3 py-1.5 text-gray-500 hover:bg-gray-50 transition-colors"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
-                </svg>
-              </button>
-              <button className="px-3 py-1.5 bg-brand-50 text-brand-700 border-l border-gray-200">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                </svg>
-              </button>
+            <h2 className="text-lg font-semibold text-gray-900">Liste projets</h2>
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
+              <button onClick={() => navigate('/')} className="px-3 py-1.5 text-gray-600 hover:bg-gray-50 transition-colors">Kanban</button>
+              <button className="px-3 py-1.5 bg-brand-600 text-white">Liste</button>
             </div>
           </div>
           <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">

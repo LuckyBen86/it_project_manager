@@ -34,7 +34,10 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="w-full max-w-sm bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">IT Project Manager</h1>
+        <div className="flex items-center gap-3 mb-6">
+          <img src="/favicon.svg" alt="" className="w-9 h-9" />
+          <h1 className="text-2xl font-bold text-gray-900">IT Project Manager</h1>
+        </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div>

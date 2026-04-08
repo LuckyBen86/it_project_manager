@@ -48,10 +48,12 @@ export default function Layout() {
       {/* Navbar */}
       <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <span className="font-bold text-gray-900 text-lg">IT Project Manager</span>
+          <div className="flex items-center gap-2">
+            <img src="/favicon.svg" alt="" className="w-7 h-7" />
+            <span className="font-bold text-gray-900 text-lg">IT Project Manager</span>
+          </div>
           <nav className="flex gap-1">
-            {navLink('/', 'Kanban', true)}
-            {navLink('/liste', 'Liste')}
+            {navLink('/', 'Liste projets', true)}
             {navLink('/gantt', 'Gantt')}
             {navLink('/synthese', 'Synthèse')}
           </nav>

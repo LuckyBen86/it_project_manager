@@ -8,6 +8,7 @@ import {
   closestCorners,
 } from '@dnd-kit/core';
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { subMonths } from 'date-fns';
 import { useAuthStore } from '../store/auth.store.ts';
 import { useProjets } from '../hooks/useProjets.ts';
@@ -24,6 +25,7 @@ import { usePoles } from '../hooks/usePoles.ts';
 import api from '../lib/api.ts';
 
 export default function KanbanPage() {
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const { projets, loading, error, refresh, updateStatut } = useProjets();
   const { ressources } = useRessources();
@@ -138,7 +140,13 @@ export default function KanbanPage() {
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-200 bg-white flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">Vue Kanban</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold text-gray-900">Liste projets</h2>
+          <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
+            <button className="px-3 py-1.5 bg-brand-600 text-white">Kanban</button>
+            <button onClick={() => navigate('/liste')} className="px-3 py-1.5 text-gray-600 hover:bg-gray-50 transition-colors">Liste</button>
+          </div>
+        </div>
         <div className="flex items-center gap-2">
           {!isResponsable && (
             <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">Lecture seule</span>
