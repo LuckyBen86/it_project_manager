@@ -14,8 +14,6 @@ export const createProjetSchema = z.object({
 
 export const updateProjetSchema = createProjetSchema.partial().extend({
   statut: z.enum(['non_valide', 'a_planifier', 'planifie', 'en_cours', 'termine']).optional(),
-  avancementProjet: z.number().int().min(0).max(100).optional(),
-  avancementAutoProjet: z.boolean().optional(),
 });
 
 export const updateStatutSchema = z.object({

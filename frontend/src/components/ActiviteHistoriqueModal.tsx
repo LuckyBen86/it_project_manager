@@ -121,7 +121,6 @@ export default function ActiviteHistoriqueModal({ tache, currentUserId, onClose,
                         <DateInput
                           value={editForm.date}
                           onChange={(v) => setEditForm((f) => ({ ...f, date: v }))}
-                          min={tache.dateDebut?.slice(0, 10)}
                           inputClassName="w-full text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-400"
                         />
                       </div>

@@ -160,8 +160,6 @@ export function computeTaskStartDates(tasks: Tache[], projectStart: Date): Map<s
 
     // Base : date explicite en base ou début du projet
     let base = task.dateDebut ? new Date(task.dateDebut) : projectStart;
-    // Recaler sur projectStart si la date stockée est antérieure (miroir du recalage visuel dans GanttPage)
-    if (base < projectStart) base = new Date(projectStart);
 
     // Contraintes des prédécesseurs : la tâche ne peut pas commencer avant leur fin,
     // même si une dateDebut explicite est enregistrée (données potentiellement obsolètes).

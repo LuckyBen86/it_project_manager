@@ -127,21 +127,6 @@ export default function ProjetDetailPanel({ open, onClose, projet, isResponsable
               ) : null;
             })()}
           </div>
-          {/* Avancement projet */}
-          {projet.taches.length > 0 && (
-            <div className="mt-2 space-y-1">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-400">Avancement</span>
-                <strong className="text-gray-700">{projet.avancementProjet ?? 0}%</strong>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-1.5">
-                <div
-                  className={`h-1.5 rounded-full transition-all ${(projet.avancementProjet ?? 0) >= 100 ? 'bg-green-500' : 'bg-brand-500'}`}
-                  style={{ width: `${projet.avancementProjet ?? 0}%` }}
-                />
-              </div>
-            </div>
-          )}
 
           {projet.description && (
             <p className="text-sm text-gray-600 mt-1">{projet.description}</p>
@@ -197,53 +182,12 @@ export default function ProjetDetailPanel({ open, onClose, projet, isResponsable
                         <p className="text-xs text-gray-500 mt-0.5 truncate">{tache.description}</p>
                       )}
 
-                      <div className="flex gap-3 mt-1 text-xs text-gray-400 flex-wrap items-center">
-                        {tache.duree && (() => {
-                          const consomme = (tache.activites ?? []).reduce((s, a) => s + a.duree, 0);
-                          const depasse = consomme > tache.duree;
-                          return (
-                            <span className={depasse ? 'text-red-500 font-medium' : ''}>
-                              {consomme > 0 ? `${consomme.toFixed(2)} / ` : ''}{tache.duree} j
-                              {depasse && ' ⚠'}
-                            </span>
-                          );
-                        })()}
+                      <div className="flex gap-3 mt-1 text-xs text-gray-400">
+                        {tache.duree && <span>{tache.duree} j</span>}
                         {tache.ressources.length > 0 && (
                           <span>{tache.ressources.map((r) => r.ressource.nom).join(', ')}</span>
                         )}
                       </div>
-
-                      {tache.avancementTache !== undefined && (() => {
-                        const consomme = (tache.activites ?? []).reduce((s, a) => s + a.duree, 0);
-                        const depasse = tache.duree != null && consomme > tache.duree;
-                        return (
-                          <div className="mt-2 space-y-1">
-                            <div className="flex items-center gap-1.5">
-                              <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full transition-all ${tache.avancementTache >= 100 ? 'bg-green-500' : depasse ? 'bg-red-500' : 'bg-amber-400'}`}
-                                  style={{ width: `${Math.min(tache.avancementTache, 100)}%` }}
-                                />
-                              </div>
-                              <span className={`text-xs font-medium tabular-nums ${depasse ? 'text-red-600' : 'text-gray-600'}`}>
-                                {tache.avancementTache}%
-                              </span>
-                              {depasse && (
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-red-500 shrink-0" aria-label="Temps dépassé">
-                                  <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                                </svg>
-                              )}
-                            </div>
-                            {(consomme > 0 || tache.duree) && (
-                              <div className={`text-xs ${depasse ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
-                                {consomme.toFixed(2)} j consommés
-                                {tache.duree ? ` / ${tache.duree} j prévus` : ''}
-                                {depasse && ' — dépassement !'}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })()}
                     </div>
 
                     {isResponsable && (
@@ -343,7 +287,6 @@ export default function ProjetDetailPanel({ open, onClose, projet, isResponsable
         tache={tacheForm.tache}
         projetDateDebut={projet.dateDebut}
         projetTaches={projet.taches}
-        projetReferentId={projet.referent?.id}
       />
 
       <ConfirmDialog

@@ -40,7 +40,7 @@ export default function MesTachesPage() {
   const { createDemande } = useMesDemandes();
   const { poles } = usePoles();
   const currentUser = useAuthStore((s) => s.user);
-  const [filterStatuts, setFilterStatuts] = useState<Set<StatutTache>>(new Set(['a_faire', 'en_cours']));
+  const [filter, setFilter] = useState<StatutTache | 'all'>('all');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filterProjetId, setFilterProjetId] = useState('');
   const [filterPoleId, setFilterPoleId] = useState('');
@@ -71,7 +71,7 @@ export default function MesTachesPage() {
   const hasActiveFilters = !!(filterProjetId || filterPoleId || filterDateFrom || filterDateTo);
 
   const filtered = taches.filter((t) => {
-    if (!filterStatuts.has(t.statut)) return false;
+    if (filter !== 'all' && t.statut !== filter) return false;
     if (filterProjetId && t.projet?.id !== filterProjetId) return false;
     if (filterPoleId && t.projet?.pole?.id !== filterPoleId) return false;
     if (filterDateFrom && (!t.dateDebut || new Date(t.dateDebut) < new Date(filterDateFrom))) return false;
@@ -185,25 +185,15 @@ export default function MesTachesPage() {
           </button>
           {/* Filtre statut */}
           <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
+          {(['all', ...STATUTS] as const).map((s) => (
             <button
-              onClick={() => setFilterStatuts(new Set(STATUTS))}
-              className={`px-3 py-1.5 font-medium transition-colors ${filterStatuts.size === STATUTS.length ? 'bg-brand-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+              key={s}
+              onClick={() => setFilter(s)}
+              className={`px-3 py-1.5 font-medium transition-colors ${filter === s ? 'bg-brand-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
             >
-              Toutes
+              {s === 'all' ? 'Toutes' : STATUT_LABELS[s]}
             </button>
-            {STATUTS.map((s) => (
-              <button
-                key={s}
-                onClick={() => setFilterStatuts((prev) => {
-                  const next = new Set(prev);
-                  if (next.has(s)) { if (next.size > 1) next.delete(s); } else next.add(s);
-                  return next;
-                })}
-                className={`px-3 py-1.5 font-medium transition-colors ${filterStatuts.has(s) && filterStatuts.size < STATUTS.length ? 'bg-brand-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-              >
-                {STATUT_LABELS[s]}
-              </button>
-            ))}
+          ))}
           </div>
         </div>
       </div>
@@ -336,27 +326,13 @@ export default function MesTachesPage() {
                               <span className={`font-semibold ${gaugeOver ? 'text-red-600' : 'text-gray-700'}`}>{dureeActivites.toFixed(2)} j</span>
                               {' / '}{tache.duree} j
                             </span>
-                            {/* Jauge temps consommé */}
+                            {/* Jauge */}
                             <div className="w-24 h-1.5 rounded bg-gray-200 overflow-hidden">
                               <div
                                 className="h-full rounded transition-all"
                                 style={{ width: `${gaugePct * 100}%`, backgroundColor: gaugeOver ? '#ef4444' : '#22c55e' }}
                               />
                             </div>
-                            {/* Avancement tâche */}
-                            {tache.avancementTache !== undefined && (
-                              <div className="flex items-center gap-1.5 mt-0.5">
-                                <span className={`text-xs font-semibold tabular-nums ${tache.avancementTache >= 100 ? 'text-green-600' : 'text-amber-600'}`}>
-                                  {tache.avancementTache}%
-                                </span>
-                                <div className="w-24 h-1.5 rounded bg-gray-200 overflow-hidden">
-                                  <div
-                                    className={`h-full rounded transition-all ${tache.avancementTache >= 100 ? 'bg-green-500' : 'bg-amber-400'}`}
-                                    style={{ width: `${tache.avancementTache}%` }}
-                                  />
-                                </div>
-                              </div>
-                            )}
                           </div>
                         ) : (
                           dureeActivites > 0 && (
@@ -438,7 +414,6 @@ export default function MesTachesPage() {
                             <DateInput
                               value={form.date}
                               onChange={(v) => setField(tache.id, 'date', v)}
-                              min={tache.dateDebut?.slice(0, 10)}
                               inputClassName="w-full text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-400"
                             />
                           </div>

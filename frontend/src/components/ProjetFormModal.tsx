@@ -1,11 +1,11 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import Modal from './Modal.tsx';
-import FormField, { inputClass, inputClassXs, selectClassXs } from './FormField.tsx';
+import FormField, { inputClass, selectClass } from './FormField.tsx';
 import TacheFormModal from './TacheFormModal.tsx';
 import ConfirmDialog from './ConfirmDialog.tsx';
 import { useRessources } from '../hooks/useRessources.ts';
@@ -18,7 +18,6 @@ import TokenField from './TokenField.tsx';
 import type { Projet, Tache, StatutProjet } from '../lib/types.ts';
 import { STATUT_LABELS, STATUTS_PROJET } from '../lib/types.ts';
 import { Controller } from 'react-hook-form';
-import { useAuthStore } from '../store/auth.store.ts';
 
 const projetSchema = z.object({
   titre:        z.string().min(1, 'Titre requis').max(255),
@@ -31,8 +30,6 @@ const projetSchema = z.object({
   dateDebut:    z.string().optional(),
   duree:        z.number({ error: 'Durée requise' }).int().positive('Durée requise (≥ 1 j)'),
   statut:       z.enum(['non_valide', 'a_planifier', 'planifie', 'en_cours', 'termine'] as const),
-  avancementAutoProjet: z.boolean(),
-  avancementProjet:     z.number().int().min(0).max(100),
 });
 
 type ProjetForm = z.infer<typeof projetSchema>;
@@ -58,8 +55,6 @@ function toInputDate(iso?: string): string {
 
 export default function ProjetFormModal({ open, onClose, onSaved, projet }: Props) {
   const isEdit = !!projet;
-  const user = useAuthStore((s) => s.user);
-  const canEditAvancement = user?.role === 'responsable' || user?.role === 'direction_generale' || user?.id === projet?.referent?.id;
   const { ressources } = useRessources();
   const { poles }      = usePoles();
   const [selectedPoleId, setSelectedPoleId] = useState<string>(projet?.pole?.id ?? '');
@@ -83,14 +78,12 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
     formState: { errors, isSubmitting },
   } = useForm<ProjetForm>({
     resolver: zodResolver(projetSchema),
-    defaultValues: { statut: 'non_valide', tagIds: [], categorieIds: [], avancementAutoProjet: true, avancementProjet: 0 },
+    defaultValues: { statut: 'non_valide', tagIds: [], categorieIds: [] },
   });
 
   const selectedTagIds      = watch('tagIds')       ?? [];
   const selectedCategorieIds = watch('categorieIds') ?? [];
   const watchedPoleId        = watch('poleId');
-  const watchAvancementAuto  = watch('avancementAutoProjet');
-  const watchAvancement      = watch('avancementProjet');
 
   const tagItems       = tags.map((t) => ({ id: t.id, nom: t.nom }));
   const categorieItems = categories.map((c) => ({ id: c.id, nom: c.nom }));
@@ -103,13 +96,6 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
   const dureeConsommee = localTaches.reduce(
     (s, t) => s + (t.activites ?? []).reduce((sa, a) => sa + a.duree, 0), 0,
   );
-  const projetAutoAvancement = useMemo(() => {
-    const totalDuree = localTaches.reduce((s, t) => s + (t.duree ?? 0), 0);
-    if (totalDuree === 0) return 0;
-    const weighted = localTaches.reduce((s, t) => s + (t.avancementTache ?? 0) * (t.duree ?? 0), 0);
-    return Math.min(100, Math.round(weighted / totalDuree));
-  }, [localTaches]);
-  const displayProjetAvancement = watchAvancementAuto ? projetAutoAvancement : (watchAvancement ?? 0);
 
   useEffect(() => {
     if (open) {
@@ -129,13 +115,11 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
               dateDebut:    toInputDate(projet.dateDebut),
               duree:        projet.duree ?? undefined,
               statut:       projet.statut,
-              avancementAutoProjet: projet.avancementAutoProjet ?? true,
-              avancementProjet:     projet.avancementProjet ?? 0,
             }
           : {
               statut: 'non_valide', titre: '', description: '',
               poleId: '', tagIds: [], categorieIds: [], referentId: '',
-              duree: undefined, avancementAutoProjet: true, avancementProjet: 0,
+              duree: undefined,
             },
       );
     }
@@ -191,8 +175,8 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
   };
 
   const onSubmit = async (data: ProjetForm) => {
-    const { referentId, avancementAutoProjet, avancementProjet, ...rest } = data;
-    const base = {
+    const { referentId, ...rest } = data;
+    const payload = {
       ...rest,
       referentId:  referentId || undefined,
       dateButoire: data.dateButoire ? new Date(data.dateButoire).toISOString() : undefined,
@@ -200,14 +184,9 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
     };
 
     if (isEdit) {
-      const payload = {
-        ...base,
-        avancementAutoProjet,
-        avancementProjet: avancementAutoProjet ? undefined : avancementProjet,
-      };
       await api.patch(`/projets/${projet.id}`, payload);
     } else {
-      await api.post('/projets', base);
+      await api.post('/projets', payload);
     }
     onSaved();
     onClose();
@@ -229,9 +208,9 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
               <input className={inputClass} {...register('titre')} placeholder="Nom du projet" />
             </FormField>
 
-            <FormField label="Description" error={errors.description?.message} small>
+            <FormField label="Description" error={errors.description?.message}>
               <textarea
-                className={`${inputClassXs} resize-none`}
+                className={`${inputClass} resize-none`}
                 rows={2}
                 {...register('description')}
                 placeholder="Description optionnelle"
@@ -239,9 +218,9 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
             </FormField>
 
             <div className="grid grid-cols-2 gap-3">
-              <FormField label="Pôle" error={(errors as Record<string, { message?: string }>).poleId?.message} required small>
+              <FormField label="Pôle" error={(errors as Record<string, { message?: string }>).poleId?.message} required>
                 <select
-                  className={selectClassXs}
+                  className={selectClass}
                   {...register('poleId')}
                   onChange={(e) => {
                     const pid = e.target.value;
@@ -259,8 +238,8 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
                 </select>
               </FormField>
 
-              <FormField label="Référent" error={errors.referentId?.message} small>
-                <select className={selectClassXs} {...register('referentId')} disabled={!watchedPoleId && !selectedPoleId}>
+              <FormField label="Référent" error={errors.referentId?.message}>
+                <select className={selectClass} {...register('referentId')} disabled={!watchedPoleId && !selectedPoleId}>
                   <option value="">— Aucun —</option>
                   {poleRessources.map((r) => (
                     <option key={r.id} value={r.id}>{r.nom}</option>
@@ -270,7 +249,7 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
             </div>
 
             <div className="grid grid-cols-3 gap-3">
-              <FormField label="Date de début" error={errors.dateDebut?.message} small>
+              <FormField label="Date de début" error={errors.dateDebut?.message}>
                 <Controller
                   name="dateDebut"
                   control={control}
@@ -284,7 +263,7 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
                 />
               </FormField>
 
-              <FormField label="Date butoire" error={errors.dateButoire?.message} small>
+              <FormField label="Date butoire" error={errors.dateButoire?.message}>
                 <Controller
                   name="dateButoire"
                   control={control}
@@ -294,11 +273,11 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
                 />
               </FormField>
 
-              <FormField label="Durée (jours)" error={errors.duree?.message} required small>
+              <FormField label="Durée (jours)" error={errors.duree?.message} required>
                 <input
                   type="number"
                   min={1}
-                  className={inputClassXs}
+                  className={inputClass}
                   {...register('duree', { setValueAs: (v: string) => v === '' ? undefined : Number(v) })}
                   placeholder="ex: 14"
                 />
@@ -306,8 +285,8 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
             </div>
 
             {isEdit && (
-              <FormField label="Statut" error={errors.statut?.message} small>
-                <select className={selectClassXs} {...register('statut')}>
+              <FormField label="Statut" error={errors.statut?.message}>
+                <select className={selectClass} {...register('statut')}>
                   {STATUTS_PROJET.map((s) => (
                     <option key={s} value={s}>{STATUT_LABELS[s as StatutProjet]}</option>
                   ))}
@@ -315,7 +294,7 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
               </FormField>
             )}
 
-            <FormField label="Catégories" error={undefined} small>
+            <FormField label="Catégories" error={undefined}>
               <TokenField
                 items={categorieItems}
                 selectedIds={selectedCategorieIds}
@@ -324,7 +303,7 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
               />
             </FormField>
 
-            <FormField label="Tags" error={errors.tagIds?.message} small>
+            <FormField label="Tags" error={errors.tagIds?.message}>
               <TokenField
                 items={tagItems}
                 selectedIds={selectedTagIds}
@@ -369,41 +348,6 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
                 </div>
               </div>
 
-              {/* Avancement projet */}
-              <div className="rounded-lg bg-gray-50 border border-gray-100 px-3 py-2.5 space-y-2 mb-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold">% avancement projet</p>
-                  <label className={`flex items-center gap-1.5 ${canEditAvancement ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
-                    <span className="text-[10px] text-gray-400">Auto</span>
-                    <input
-                      type="checkbox"
-                      className="w-3.5 h-3.5 accent-brand-600"
-                      disabled={!canEditAvancement}
-                      {...register('avancementAutoProjet')}
-                    />
-                  </label>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-1.5">
-                  <div
-                    className={`h-1.5 rounded-full transition-all ${displayProjetAvancement >= 100 ? 'bg-green-500' : 'bg-brand-500'}`}
-                    style={{ width: `${displayProjetAvancement}%` }}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-gray-800">{displayProjetAvancement}%</p>
-                  {!watchAvancementAuto && (
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      disabled={!canEditAvancement}
-                      className={`w-16 text-xs text-right border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:border-brand-400 ${!canEditAvancement ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                      {...register('avancementProjet', { setValueAs: (v: string) => v === '' ? 0 : Math.min(100, Math.max(0, Number(v))) })}
-                    />
-                  )}
-                </div>
-              </div>
-
               <div className="flex items-center justify-between -mx-2 px-3 py-2 bg-gray-100 rounded-lg border border-gray-200">
                 <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
                   <span className="w-1 h-3.5 bg-brand-500 rounded-full inline-block" />
@@ -440,16 +384,8 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
                               {STATUT_TACHE_LABELS[tache.statut]}
                             </span>
                           </div>
-                          <div className="flex gap-2 mt-0.5 text-[10px] text-gray-400 flex-wrap items-center">
-                            {tache.duree && (() => {
-                              const consomme = (tache.activites ?? []).reduce((s, a) => s + a.duree, 0);
-                              const depasse = consomme > tache.duree;
-                              return (
-                                <span className={depasse ? 'text-red-500 font-medium' : ''}>
-                                  {consomme > 0 ? `${consomme.toFixed(2)} / ` : ''}{tache.duree} j{depasse && ' ⚠'}
-                                </span>
-                              );
-                            })()}
+                          <div className="flex gap-2 mt-0.5 text-[10px] text-gray-400 flex-wrap">
+                            {tache.duree && <span>{tache.duree} j</span>}
                             {tache.dateDebut && (
                               <span>{format(new Date(tache.dateDebut), 'dd MMM', { locale: fr })}</span>
                             )}
@@ -464,17 +400,6 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
                                     {initiales(r.ressource.nom)}
                                   </span>
                                 ))}
-                              </span>
-                            )}
-                            {tache.avancementTache !== undefined && (
-                              <span className="flex items-center gap-1 ml-auto">
-                                <div className="w-12 h-1 bg-gray-200 rounded-full overflow-hidden">
-                                  <div
-                                    className={`h-full rounded-full ${tache.avancementTache >= 100 ? 'bg-green-500' : 'bg-amber-400'}`}
-                                    style={{ width: `${tache.avancementTache}%` }}
-                                  />
-                                </div>
-                                <span className="text-gray-600 font-medium tabular-nums">{tache.avancementTache}%</span>
                               </span>
                             )}
                           </div>
@@ -528,7 +453,6 @@ export default function ProjetFormModal({ open, onClose, onSaved, projet }: Prop
             tache={tacheForm.tache}
             projetDateDebut={projet.dateDebut}
             projetTaches={localTaches}
-            projetReferentId={projet.referent?.id}
           />
 
           <ConfirmDialog

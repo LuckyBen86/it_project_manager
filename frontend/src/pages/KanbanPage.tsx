@@ -21,14 +21,13 @@ import ConfirmDialog from '../components/ConfirmDialog.tsx';
 import { STATUTS_PROJET } from '../lib/types.ts';
 import type { StatutProjet, Projet } from '../lib/types.ts';
 import { usePoles } from '../hooks/usePoles.ts';
-import { useNavigate } from 'react-router-dom';
 import api from '../lib/api.ts';
 
 export default function KanbanPage() {
-  const navigate = useNavigate();
   const { user } = useAuthStore();
   const { projets, loading, error, refresh, updateStatut } = useProjets();
   const { ressources } = useRessources();
+  const { tags } = useTags('projet');
   const { poles } = usePoles();
   const [activeProjet, setActiveProjet] = useState<Projet | null>(null);
 
@@ -43,20 +42,14 @@ export default function KanbanPage() {
   const [filterReferentId, setFilterReferentId] = useState('');
   const [filterPoleId, setFilterPoleId] = useState('');
   const [filterTagId, setFilterTagId] = useState('');
-  const { tags } = useTags('projet', filterPoleId || undefined);
   const [filterTermineDelai, setFilterTermineDelai] = useState(2); // mois
   const [showTermine, setShowTermine] = useState(false);
 
   const isResponsable = user?.role === 'responsable' || user?.role === 'direction_generale';
-  const canEditProjet = (p: Projet) => isResponsable || p.referent?.id === user?.id;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
-
-  const referentsFiltres = useMemo(() =>
-    filterPoleId ? ressources.filter((r) => (r.poles ?? []).some((rp) => rp.pole.id === filterPoleId)) : ressources,
-  [ressources, filterPoleId]);
 
   const hasActiveFilters = !!(filterReferentId || filterPoleId || filterTagId || filterTermineDelai !== 2 || showTermine);
 
@@ -145,26 +138,9 @@ export default function KanbanPage() {
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-200 bg-white flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold text-gray-900">Projets</h2>
-          <div className="flex items-center rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
-            <button className="px-3 py-1.5 bg-brand-50 text-brand-700">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
-              </svg>
-            </button>
-            <button
-              onClick={() => navigate('/liste')}
-              className="px-3 py-1.5 text-gray-500 hover:bg-gray-50 border-l border-gray-200 transition-colors"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-              </svg>
-            </button>
-          </div>
-        </div>
+        <h2 className="text-lg font-semibold text-gray-900">Vue Kanban</h2>
         <div className="flex items-center gap-2">
-          {!isResponsable && !projets.some((p) => p.referent?.id === user?.id) && (
+          {!isResponsable && (
             <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">Lecture seule</span>
           )}
           <button
@@ -195,31 +171,6 @@ export default function KanbanPage() {
       {/* Barre de filtres */}
       {filtersOpen && (
         <div className="px-6 py-2.5 border-b border-gray-200 bg-gray-50 flex flex-wrap items-center gap-4">
-          {/* Pôle */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500 font-medium shrink-0">Pôle :</span>
-            <select
-              value={filterPoleId}
-              onChange={(e) => {
-                const newPoleId = e.target.value;
-                setFilterPoleId(newPoleId);
-                setFilterTagId('');
-                if (newPoleId && filterReferentId) {
-                  const r = ressources.find((r) => r.id === filterReferentId);
-                  if (!r?.poles?.some((rp) => rp.pole.id === newPoleId)) setFilterReferentId('');
-                }
-              }}
-              className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:border-brand-400"
-            >
-              <option value="">Tous</option>
-              {poles.map((p) => (
-                <option key={p.id} value={p.id}>{p.nom}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="w-px h-4 bg-gray-300" />
-
           {/* Référent */}
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500 font-medium shrink-0">Référent :</span>
@@ -229,8 +180,25 @@ export default function KanbanPage() {
               className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:border-brand-400 min-w-[140px]"
             >
               <option value="">Tous</option>
-              {referentsFiltres.map((r) => (
+              {ressources.map((r) => (
                 <option key={r.id} value={r.id}>{r.nom}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="w-px h-4 bg-gray-300" />
+
+          {/* Pôle */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500 font-medium shrink-0">Pôle :</span>
+            <select
+              value={filterPoleId}
+              onChange={(e) => setFilterPoleId(e.target.value)}
+              className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:border-brand-400"
+            >
+              <option value="">Tous</option>
+              {poles.map((p) => (
+                <option key={p.id} value={p.id}>{p.nom}</option>
               ))}
             </select>
           </div>
@@ -316,8 +284,7 @@ export default function KanbanPage() {
                 statut={statut}
                 projets={getProjetsByStatut(statut)}
                 draggable={isResponsable}
-                onEdit={(p) => setProjetForm({ open: true, projet: p })}
-                canEdit={canEditProjet}
+                onEdit={isResponsable ? (p) => setProjetForm({ open: true, projet: p }) : undefined}
                 onDelete={isResponsable ? (p) => setDeleteTarget(p) : undefined}
                 onOpen={(p) => setDetailProjet(p)}
               />

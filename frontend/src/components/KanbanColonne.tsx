@@ -9,7 +9,6 @@ interface Props {
   projets: Projet[];
   draggable: boolean;
   onEdit?: (projet: Projet) => void;
-  canEdit?: (projet: Projet) => boolean;
   onDelete?: (projet: Projet) => void;
   onOpen?: (projet: Projet) => void;
 }
@@ -22,7 +21,7 @@ const COLONNE_COLORS: Record<StatutProjet, string> = {
   termine: 'border-t-green-400',
 };
 
-export default function KanbanColonne({ statut, projets, draggable, onEdit, canEdit, onDelete, onOpen }: Props) {
+export default function KanbanColonne({ statut, projets, draggable, onEdit, onDelete, onOpen }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: statut });
 
   return (
@@ -45,7 +44,7 @@ export default function KanbanColonne({ statut, projets, draggable, onEdit, canE
               key={projet.id}
               projet={projet}
               draggable={draggable}
-              onEdit={onEdit && (!canEdit || canEdit(projet)) ? onEdit : undefined}
+              onEdit={onEdit}
               onDelete={onDelete}
               onOpen={onOpen}
             />

@@ -54,7 +54,7 @@ export interface Ressource {
 export interface Tag {
   id: string;
   nom: string;
-  types: TypeTag[];
+  type: TypeTag;
   poles?: Pick<Pole, 'id' | 'nom'>[];
 }
 
@@ -85,8 +85,6 @@ export interface Tache {
   duree?: number;
   statut: StatutTache;
   enAttenteValidation?: boolean;
-  avancementTache?: number;
-  avancementAutoTache?: boolean;
   ressources: TacheRessource[];
   dependances: TacheDependanceItem[];
   activites?: Activite[];
@@ -124,9 +122,8 @@ export interface Projet {
   dateDebut?: string;
   duree?: number;
   statut: StatutProjet;
-  avancementProjet?: number;
-  avancementAutoProjet?: boolean;
   taches: Tache[];
+  avancementProjet?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -192,48 +189,42 @@ export interface AuthUser {
   role: Role;
 }
 
-// Notifications
-export type NotificationType = 'retard' | 'echeance_proche' | 'demande_en_attente';
+export interface SearchResultProjet {
+  id: string;
+  titre: string;
+  pole?: Pick<Pole, 'nom'>;
+}
+
+export interface SearchResultTache {
+  id: string;
+  titre: string;
+  projetTitre: string;
+}
+
+export interface SearchResults {
+  projets: SearchResultProjet[];
+  taches: SearchResultTache[];
+}
+
 export interface AppNotification {
   id: string;
-  type: NotificationType;
+  type: string;
   titre: string;
-  projetId?: string;
   projetTitre?: string;
-  dateButoire?: string;
-  count?: number;
 }
+
 export interface NotificationsResponse {
   count: number;
   items: AppNotification[];
 }
 
-// Charge ressource
 export interface ChargeRow {
   ressourceId: string;
   ressourceNom: string;
   workload: Record<string, number>;
 }
+
 export interface ChargeData {
   weeks: string[];
   rows: ChargeRow[];
-}
-
-// Recherche globale
-export interface SearchProjet {
-  id: string;
-  titre: string;
-  statut: StatutProjet;
-  pole?: Pick<Pole, 'id' | 'nom'>;
-}
-export interface SearchTache {
-  id: string;
-  titre: string;
-  statut: StatutTache;
-  projetId: string;
-  projetTitre: string;
-}
-export interface SearchResults {
-  projets: SearchProjet[];
-  taches: SearchTache[];
 }

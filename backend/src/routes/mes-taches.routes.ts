@@ -12,15 +12,7 @@ router.use((req, _res, next) => { console.log(`[mes-taches] ${req.method} ${req.
 router.use(authenticate);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function computeTacheAvancement(t: any): any {
-  if (!t.avancementAutoTache) return t;
-  const total = (t.activites ?? []).reduce((s: number, a: any) => s + Number(a.duree), 0);
-  const avancement = t.duree && t.duree > 0
-    ? Math.min(100, Math.round((total / t.duree) * 100)) : 0;
-  return { ...t, avancementTache: avancement };
-}
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const flattenTags = (t: any) => computeTacheAvancement({ ...t, tags: (t.tags ?? []).map((tt: any) => tt.tag) });
+const flattenTags = (t: any) => ({ ...t, tags: (t.tags ?? []).map((tt: any) => tt.tag) });
 
 const MES_TACHES_INCLUDE = {
   projet: { select: { id: true, titre: true, statut: true, pole: true } },
@@ -56,31 +48,14 @@ router.post('/:tacheId/activites', validate(addActiviteSchema), async (req: Auth
   });
   if (!assignment) { res.status(403).json({ message: 'Non assigné à cette tâche' }); return; }
 
-  const tache = await prisma.tache.findUnique({ where: { id: tacheId }, select: { id: true, titre: true, statut: true, deletedAt: true, projetId: true, dateDebut: true } });
+  const tache = await prisma.tache.findUnique({ where: { id: tacheId }, select: { statut: true, deletedAt: true } });
   if (!tache || tache.deletedAt) { res.status(404).json({ message: 'Tâche introuvable' }); return; }
   if (tache.statut === 'termine') { res.status(403).json({ message: 'Impossible d\'ajouter une activité sur une tâche terminée' }); return; }
-  if (tache.dateDebut && new Date(req.body.date) < new Date(tache.dateDebut)) {
-    res.status(400).json({ message: 'La date de l\'activité ne peut pas être antérieure au début de la tâche' }); return;
-  }
 
   const activite = await prisma.activite.create({
     data: { description: req.body.description, date: req.body.date, duree: req.body.duree, ressourceId: req.user!.sub, tacheId },
     include: { ressource: { select: { id: true, nom: true, email: true } } },
   });
-
-  // Passer la tâche de "a_faire" à "en_cours"
-  if (tache.statut === 'a_faire') {
-    await prisma.tache.update({ where: { id: tache.id }, data: { statut: 'en_cours' } });
-    await logAction({ auteurId: req.user!.sub, action: 'STATUT_TACHE', entityId: tache.id, entityTitre: tache.titre, ancienneValeur: STATUT_LABELS_FR['a_faire'], nouvelleValeur: STATUT_LABELS_FR['en_cours'] });
-  }
-
-  // Passer le projet de "planifie" à "en_cours"
-  const projet = await prisma.projet.findUnique({ where: { id: tache.projetId }, select: { id: true, titre: true, statut: true } });
-  if (projet?.statut === 'planifie') {
-    await prisma.projet.update({ where: { id: projet.id }, data: { statut: 'en_cours' } });
-    await logAction({ auteurId: req.user!.sub, action: 'STATUT_PROJET', entityId: projet.id, entityTitre: projet.titre, ancienneValeur: STATUT_LABELS_FR['planifie'], nouvelleValeur: STATUT_LABELS_FR['en_cours'] });
-  }
-
   res.status(201).json(activite);
 });
 

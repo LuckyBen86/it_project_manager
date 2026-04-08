@@ -117,7 +117,7 @@ export default function GanttBarre({ projet, timelineStart, dayWidth, draggable,
   return (
     <div
       ref={barRef}
-      className={`absolute select-none ${isDragging || isResizing ? 'opacity-70 z-10' : 'z-[1]'} ${draggable ? 'cursor-move' : 'cursor-default'}`}
+      className={`absolute select-none ${isDragging || isResizing ? 'opacity-70 z-10' : 'z-[1]'} ${draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
       style={{ left: `${left}px`, width: `${width}px`, top: '4px' }}
       onMouseDown={handleDragMouseDown}
       onMouseEnter={() => {
@@ -187,12 +187,10 @@ export default function GanttBarre({ projet, timelineStart, dayWidth, draggable,
 
         {draggable && (
           <div
-            className="absolute right-0 top-0 h-full w-4 hover:bg-white/20 rounded-r flex items-center justify-center gap-px"
-            style={{ cursor: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath d='M7 10h6M4.5 7l-3 3 3 3M15.5 7l3 3-3 3' stroke='%23374151' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\") 10 10, ew-resize" }}
+            className="absolute right-0 top-0 h-full w-4 cursor-col-resize hover:bg-white/30 rounded-r flex items-center justify-center"
             onMouseDown={handleResizeMouseDown}
           >
-            <div className="w-px h-3 bg-white/70 rounded-full" />
-            <div className="w-px h-3 bg-white/70 rounded-full" />
+            <div className="w-0.5 h-3/5 bg-white/60 rounded-full" />
           </div>
         )}
       </div>

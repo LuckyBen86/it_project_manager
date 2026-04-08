@@ -34,7 +34,7 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 4000
       # CORS : l'API est appelée depuis le navigateur via le frontend nginx
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3100}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
       # Compte admin initial (seed)
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@it-pm.local}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-Admin1234!}
@@ -57,7 +57,7 @@ services:
     container_name: it_pm_frontend
     restart: unless-stopped
     ports:
-      - "${FRONTEND_PORT:-3100}:80"
+      - "${FRONTEND_PORT:-80}:80"
     depends_on:
       backend:
         condition: service_healthy

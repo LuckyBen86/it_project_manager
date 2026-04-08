@@ -95,7 +95,8 @@ model Ressource {
   email        String   @unique
   passwordHash String   @map("password_hash")
   role         Role     @default(utilisateur)
-  createdAt    DateTime @default(now()) @map("created_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  loggedOutAt  DateTime? @map("logged_out_at")
 
   responsablePoles ResponsablePole[]
   poles            RessourcePole[]
@@ -111,25 +112,16 @@ model Ressource {
 }
 
 model Tag {
-  id      String @id @default(uuid())
-  nom     String @unique
+  id      String   @id @default(uuid())
+  nom     String
+  type    TypeTag
 
   projets ProjetTag[]
   taches  TacheTag[]
   poles   TagPole[]
-  types   TagType[]
 
+  @@unique([nom, type])
   @@map("tags")
-}
-
-model TagType {
-  tagId String  @map("tag_id")
-  type  TypeTag
-
-  tag Tag @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@id([tagId, type])
-  @@map("tag_types")
 }
 
 model TagPole {
@@ -207,8 +199,6 @@ model Projet {
   dateDebut   DateTime?    @map("date_debut")
   duree       Int?
   statut      StatutProjet @default(non_valide)
-  avancementProjet     Int     @default(0)    @map("avancement_projet")
-  avancementAutoProjet Boolean @default(true) @map("avancement_auto_projet")
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
   deletedAt   DateTime?    @map("deleted_at")
@@ -234,8 +224,6 @@ model Tache {
   duree                Int?
   statut               StatutTache @default(a_faire)
   enAttenteValidation  Boolean     @default(false) @map("en_attente_validation")
-  avancementTache      Int         @default(0)    @map("avancement_tache")
-  avancementAutoTache  Boolean     @default(true) @map("avancement_auto_tache")
   createdAt           DateTime    @default(now()) @map("created_at")
   updatedAt           DateTime    @updatedAt @map("updated_at")
   deletedAt           DateTime?   @map("deleted_at")

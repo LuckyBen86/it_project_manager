@@ -36,7 +36,7 @@ export default function ProjetCard({ projet, draggable, onEdit, onDelete, onOpen
       style={style}
       {...(draggable ? { ...attributes, ...listeners } : {})}
       className={`bg-white border border-gray-200 rounded-lg p-2 shadow-sm select-none group ${
-        draggable ? 'cursor-move' : 'cursor-default'
+        draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
       }`}
     >
       <div className="flex items-start justify-between gap-1.5">
@@ -76,33 +76,17 @@ export default function ProjetCard({ projet, draggable, onEdit, onDelete, onOpen
       )}
 
       {totalTaches > 0 && (
-        <div className="mt-1.5 space-y-1">
-          <div>
-            <div className="flex justify-between text-[10px] leading-none text-gray-400 mb-1">
-              <span>Tâches</span>
-              <span>{terminees}/{totalTaches}</span>
-            </div>
-            <div className="h-1 bg-gray-100 rounded-full">
-              <div
-                className="h-1 bg-brand-500 rounded-full transition-all"
-                style={{ width: `${(terminees / totalTaches) * 100}%` }}
-              />
-            </div>
+        <div className="mt-1.5">
+          <div className="flex justify-between text-[10px] leading-none text-gray-400 mb-1">
+            <span>Tâches</span>
+            <span>{terminees}/{totalTaches}</span>
           </div>
-          {projet.avancementProjet !== undefined && (
-            <div>
-              <div className="flex justify-between text-[10px] leading-none text-gray-400 mb-1">
-                <span>Avancement</span>
-                <span className="font-medium text-gray-600">{projet.avancementProjet}%</span>
-              </div>
-              <div className="h-1 bg-gray-100 rounded-full">
-                <div
-                  className={`h-1 rounded-full transition-all ${projet.avancementProjet >= 100 ? 'bg-green-500' : 'bg-amber-400'}`}
-                  style={{ width: `${projet.avancementProjet}%` }}
-                />
-              </div>
-            </div>
-          )}
+          <div className="h-1 bg-gray-100 rounded-full">
+            <div
+              className="h-1 bg-brand-500 rounded-full transition-all"
+              style={{ width: `${(terminees / totalTaches) * 100}%` }}
+            />
+          </div>
         </div>
       )}
 

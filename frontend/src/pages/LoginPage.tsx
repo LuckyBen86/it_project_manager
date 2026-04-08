@@ -3,7 +3,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/auth.store.ts';
-import AppLogo from '../components/AppLogo.tsx';
 
 const loginSchema = z.object({
   email: z.string().email('Email invalide'),
@@ -35,10 +34,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="w-full max-w-sm bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-        <div className="flex items-center gap-3 mb-6">
-          <AppLogo className="w-8 h-8 text-brand-600" />
-          <h1 className="text-2xl font-bold text-gray-900">IT Project Manager</h1>
-        </div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-6">IT Project Manager</h1>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div>

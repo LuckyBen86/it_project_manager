@@ -1,40 +1,31 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Modal from './Modal.tsx';
-import FormField, { inputClass } from './FormField.tsx';
+import FormField, { inputClass, selectClass } from './FormField.tsx';
 import TokenField from './TokenField.tsx';
 import type { Tag, TypeTag, Pole } from '../lib/types.ts';
 
 const tagSchema = z.object({
   nom:     z.string().min(1, 'Nom requis').max(100),
+  type:    z.enum(['projet', 'tache'] as const),
   poleIds: z.array(z.string()).optional(),
 });
 
 type TagForm = z.infer<typeof tagSchema>;
 
-const TYPE_ITEMS = [
-  { id: 'projet', nom: 'Projet' },
-  { id: 'tache',  nom: 'Tâche' },
-];
-
-const EMPTY_TYPES: TypeTag[] = [];
-
 interface Props {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: { nom: string; types: TypeTag[]; poleIds?: string[] }) => Promise<void>;
+  onSubmit: (data: TagForm) => Promise<void>;
   tag?: Tag;
-  defaultTypes?: TypeTag[];
+  defaultType?: TypeTag;
   poles: Pole[];
 }
 
-export default function CategorieFormModal({ open, onClose, onSubmit, tag, defaultTypes = EMPTY_TYPES, poles }: Props) {
+export default function CategorieFormModal({ open, onClose, onSubmit, tag, defaultType = 'projet', poles }: Props) {
   const isEdit = !!tag;
-
-  // Types géré en état local pour un re-render immédiat et fiable
-  const [selectedTypes, setSelectedTypes] = useState<TypeTag[]>([]);
 
   const {
     register,
@@ -47,17 +38,16 @@ export default function CategorieFormModal({ open, onClose, onSubmit, tag, defau
 
   useEffect(() => {
     if (open) {
-      setSelectedTypes(tag ? (tag.types ?? []) : defaultTypes);
       reset(
         tag
-          ? { nom: tag.nom, poleIds: (tag.poles ?? []).map((p) => p.id) }
-          : { nom: '', poleIds: [] },
+          ? { nom: tag.nom, type: tag.type, poleIds: (tag.poles ?? []).map((p) => p.id) }
+          : { nom: '', type: defaultType, poleIds: [] },
       );
     }
-  }, [open, tag, defaultTypes, reset]);
+  }, [open, tag, defaultType, reset]);
 
   const handleFormSubmit = async (data: TagForm) => {
-    await onSubmit({ ...data, types: selectedTypes });
+    await onSubmit(data);
     onClose();
   };
 
@@ -71,13 +61,11 @@ export default function CategorieFormModal({ open, onClose, onSubmit, tag, defau
           <input className={inputClass} {...register('nom')} placeholder="ex: Infrastructure" autoFocus />
         </FormField>
 
-        <FormField label="Types (vide = tous les types)" error={undefined}>
-          <TokenField
-            items={TYPE_ITEMS}
-            selectedIds={selectedTypes}
-            onChange={(ids) => setSelectedTypes(ids as TypeTag[])}
-            placeholder="+ Type"
-          />
+        <FormField label="Type" error={errors.type?.message} required>
+          <select className={selectClass} {...register('type')} disabled={isEdit}>
+            <option value="projet">Projet</option>
+            <option value="tache">Tâche</option>
+          </select>
         </FormField>
 
         <FormField label="Pôles (vide = tous les pôles)" error={undefined}>

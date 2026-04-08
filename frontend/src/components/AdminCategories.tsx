@@ -7,14 +7,14 @@ import ConfirmDialog from './ConfirmDialog.tsx';
 const TYPE_LABELS: Record<TypeTag, string> = { projet: 'Projet', tache: 'Tâche' };
 const TYPE_COLORS: Record<TypeTag, string> = {
   projet: 'bg-blue-50 text-blue-700',
-  tache:  'bg-purple-50 text-purple-700',
+  tache: 'bg-purple-50 text-purple-700',
 };
 
 export default function AdminCategories() {
-  const [tags, setTags]   = useState<Tag[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [poles, setPoles] = useState<Pole[]>([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState<{ open: boolean; tag?: Tag }>({ open: false });
+  const [form, setForm] = useState<{ open: boolean; tag?: Tag; defaultType?: TypeTag }>({ open: false });
   const [deleteTarget, setDeleteTarget] = useState<Tag | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [filter, setFilter] = useState<TypeTag | 'tous'>('tous');
@@ -33,9 +33,9 @@ export default function AdminCategories() {
 
   useEffect(() => { void load(); }, [load]);
 
-  const handleSubmit = async (data: { nom: string; types: TypeTag[]; poleIds?: string[] }) => {
+  const handleSubmit = async (data: { nom: string; type: TypeTag; poleIds?: string[] }) => {
     if (form.tag) {
-      await api.patch(`/tags/${form.tag.id}`, { nom: data.nom, types: data.types, poleIds: data.poleIds });
+      await api.patch(`/tags/${form.tag.id}`, { nom: data.nom, poleIds: data.poleIds });
     } else {
       await api.post('/tags', data);
     }
@@ -55,11 +55,7 @@ export default function AdminCategories() {
   };
 
   const filtered = tags.filter((t) => {
-    if (filter !== 'tous') {
-      const types = t.types ?? [];
-      // tag sans type = tous les types → visible dans tous les filtres
-      if (types.length > 0 && !types.includes(filter)) return false;
-    }
+    if (filter !== 'tous' && t.type !== filter) return false;
     if (filterPoleId) {
       if ((t.poles ?? []).length === 0) return false;
       if (!(t.poles ?? []).some((p) => p.id === filterPoleId)) return false;
@@ -113,7 +109,7 @@ export default function AdminCategories() {
           <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
             <tr>
               <th className="px-5 py-3 text-left font-medium">Nom</th>
-              <th className="px-5 py-3 text-left font-medium">Types</th>
+              <th className="px-5 py-3 text-left font-medium">Type</th>
               <th className="px-5 py-3 text-left font-medium">Pôles</th>
               <th className="px-5 py-3 text-right font-medium">Actions</th>
             </tr>
@@ -123,17 +119,9 @@ export default function AdminCategories() {
               <tr key={tag.id} className="group hover:bg-gray-50 transition-colors">
                 <td className="px-5 py-3 font-medium text-gray-800">{tag.nom}</td>
                 <td className="px-5 py-3">
-                  {(tag.types ?? []).length === 0 ? (
-                    <span className="text-xs text-gray-400 italic">Tous les types</span>
-                  ) : (
-                    <div className="flex flex-wrap gap-1">
-                      {tag.types!.map((type) => (
-                        <span key={type} className={`text-xs px-2 py-0.5 rounded-full font-medium ${TYPE_COLORS[type]}`}>
-                          {TYPE_LABELS[type]}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${TYPE_COLORS[tag.type]}`}>
+                    {TYPE_LABELS[tag.type]}
+                  </span>
                 </td>
                 <td className="px-5 py-3">
                   {(tag.poles ?? []).length === 0 ? (
@@ -175,6 +163,7 @@ export default function AdminCategories() {
         onClose={() => setForm({ open: false })}
         onSubmit={handleSubmit}
         tag={form.tag}
+        defaultType={form.defaultType ?? 'projet'}
         poles={poles}
       />
 

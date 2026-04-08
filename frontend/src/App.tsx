@@ -13,8 +13,6 @@ import MesDemandesPage from './pages/MesDemandesPage.tsx';
 import DemandesResponsablePage from './pages/DemandesResponsablePage.tsx';
 import AdminPage from './pages/AdminPage.tsx';
 import CorbeillePage from './pages/CorbeillePage.tsx';
-import ChargePage from './pages/ChargePage.tsx';
-import ListePage from './pages/ListePage.tsx';
 
 export default function App() {
   const initFromStorage = useAuthStore((s) => s.initFromStorage);
@@ -56,8 +54,6 @@ export default function App() {
             </AdminRoute>
           }
         />
-        <Route path="charge" element={<ChargePage />} />
-        <Route path="liste" element={<ListePage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

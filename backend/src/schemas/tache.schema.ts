@@ -12,8 +12,6 @@ export const createTacheSchema = z.object({
 
 export const updateTacheSchema = createTacheSchema.partial().extend({
   statut: z.enum(['a_faire', 'en_cours', 'termine']).optional(),
-  avancementTache: z.number().int().min(0).max(100).optional(),
-  avancementAutoTache: z.boolean().optional(),
 });
 
 export type CreateTacheInput = z.infer<typeof createTacheSchema>;

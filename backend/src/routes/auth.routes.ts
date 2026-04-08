@@ -1,11 +1,21 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
+import rateLimit from 'express-rate-limit';
 import prisma from '../lib/prisma.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../lib/jwt.js';
+import { authenticate, AuthRequest } from '../middleware/auth.middleware.js';
 import { validate } from '../middleware/validate.middleware.js';
 import { loginSchema, refreshSchema } from '../schemas/auth.schema.js';
 
 const router = Router();
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Trop de tentatives de connexion, réessayez dans 15 minutes' },
+});
 
 async function buildPayload(ressource: { id: string; email: string; role: string }) {
   const responsablePoles = await prisma.responsablePole.findMany({
@@ -22,7 +32,7 @@ async function buildPayload(ressource: { id: string; email: string; role: string
 }
 
 // POST /auth/login
-router.post('/login', validate(loginSchema), async (req: Request, res: Response): Promise<void> => {
+router.post('/login', loginLimiter, validate(loginSchema), async (req: Request, res: Response): Promise<void> => {
   const { email, password } = req.body;
 
   const ressource = await prisma.ressource.findUnique({ where: { email } });
@@ -36,6 +46,12 @@ router.post('/login', validate(loginSchema), async (req: Request, res: Response)
     res.status(401).json({ message: 'Email ou mot de passe incorrect' });
     return;
   }
+
+  // Réinitialise la session (invalide les tokens émis avant ce login)
+  await prisma.ressource.update({
+    where: { id: ressource.id },
+    data: { loggedOutAt: null },
+  });
 
   const payload = await buildPayload(ressource);
   const accessToken = signAccessToken(payload);
@@ -71,8 +87,11 @@ router.post('/refresh', validate(refreshSchema), async (req: Request, res: Respo
 });
 
 // POST /auth/logout
-router.post('/logout', (_req: Request, res: Response): void => {
-  // Stateless JWT — invalider côté client
+router.post('/logout', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  await prisma.ressource.update({
+    where: { id: req.user!.sub },
+    data: { loggedOutAt: new Date() },
+  });
   res.status(204).send();
 });
 

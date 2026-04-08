@@ -1,11 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/auth.store.ts';
 import { useMesDemandesCount } from '../hooks/useMesDemandes.ts';
 import { useDemandesResponsableCount } from '../hooks/useDemandesResponsable.ts';
-import NotificationDropdown from './NotificationDropdown.tsx';
-import GlobalSearch from './GlobalSearch.tsx';
-import AppLogo from './AppLogo.tsx';
 
 export default function Layout() {
   const { user, logout } = useAuthStore();
@@ -13,7 +10,6 @@ export default function Layout() {
   const { count: mesDemandesCount } = useMesDemandesCount();
   const isManager = user?.role === 'responsable' || user?.role === 'direction_generale';
   const { count: demandesResponsableCount } = useDemandesResponsableCount(isManager);
-  const location = useLocation();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -52,29 +48,12 @@ export default function Layout() {
       {/* Navbar */}
       <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <AppLogo className="w-6 h-6 text-brand-600" />
-            <span className="font-bold text-gray-900 text-lg">IT Project Manager</span>
-          </div>
+          <span className="font-bold text-gray-900 text-lg">IT Project Manager</span>
           <nav className="flex gap-1">
-            <NavLink
-              to="/"
-              className={() => {
-                const isActive = location.pathname === '/' || location.pathname === '/liste';
-                return `px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${isActive ? 'bg-brand-50 text-brand-700' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`;
-              }}
-            >
-              Projets
-            </NavLink>
+            {navLink('/', 'Kanban', true)}
             {navLink('/gantt', 'Gantt')}
             {navLink('/synthese', 'Synthèse')}
-            {navLink('/charge', 'Charge')}
           </nav>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <GlobalSearch />
-          <NotificationDropdown />
         </div>
 
         {/* Menu utilisateur */}

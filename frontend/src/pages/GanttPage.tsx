@@ -44,6 +44,8 @@ export default function GanttPage() {
   const { user } = useAuthStore();
   const { projets, loading, error, refresh, updateGantt, updateTacheGantt } = useProjets();
   const { ressources } = useRessources();
+  const { tags: tagsProjets } = useTags('projet');
+  const { tags: tagsTaches } = useTags('tache');
   const { poles } = usePoles();
   const [zoom, setZoom] = useState<ZoomLevel>('semaine');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -55,8 +57,6 @@ export default function GanttPage() {
   const [filterReferentId, setFilterReferentId] = useState('');
   const [filterPoleId, setFilterPoleId] = useState('');
   const [filterTagId, setFilterTagId] = useState('');
-  const { tags: tagsProjets } = useTags('projet', filterPoleId || undefined);
-  const { tags: tagsTaches } = useTags('tache', filterPoleId || undefined);
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
 
@@ -65,7 +65,6 @@ export default function GanttPage() {
   const [tacheModal, setTacheModal] = useState<{ projetId: string; tache: Tache; projetDateDebut?: string } | null>(null);
 
   const isResponsable = user?.role === 'responsable' || user?.role === 'direction_generale';
-  const canEditProjet = (p: Projet) => isResponsable || p.referent?.id === user?.id;
 
   // Correction automatique : ramène en base la dateDebut des tâches antérieures à leur projet
   const correctedTachesRef = useRef(new Set<string>());
@@ -101,10 +100,6 @@ export default function GanttPage() {
     () => buildTimelineHeaders(zoom, timelineStart, TOTAL_DAYS, dayWidth),
     [zoom, timelineStart, dayWidth],
   );
-
-  const referentsFiltres = useMemo(() =>
-    filterPoleId ? ressources.filter((r) => (r.poles ?? []).some((rp) => rp.pole.id === filterPoleId)) : ressources,
-  [ressources, filterPoleId]);
 
   const projetsGantt = useMemo(() => projets.filter((p) => {
     if (!filterStatuts.has(p.statut)) return false;
@@ -156,74 +151,48 @@ export default function GanttPage() {
     tacheId: string,
     updates: { dateDebut?: string; duree?: number },
   ) => {
-    const projet = projets.find((p) => p.id === projetId);
-    if (projet) {
-      // Construire la map des successeurs : tacheId → [ids des tâches qui en dépendent]
-      const successorMap = new Map<string, string[]>();
-      for (const t of projet.taches) {
-        for (const dep of t.dependances ?? []) {
-          const list = successorMap.get(dep.precedentId) ?? [];
-          list.push(t.id);
-          successorMap.set(dep.precedentId, list);
-        }
-      }
-      // BFS pour collecter tous les descendants transitifs
-      const descendants = new Set<string>();
-      const queue = [tacheId];
-      while (queue.length > 0) {
-        const current = queue.shift()!;
-        for (const succId of successorMap.get(current) ?? []) {
-          if (!descendants.has(succId)) {
-            descendants.add(succId);
-            queue.push(succId);
+    if (updates.dateDebut) {
+      const projet = projets.find((p) => p.id === projetId);
+      const tache = projet?.taches.find((t) => t.id === tacheId);
+      if (projet && tache?.dateDebut) {
+        const delta = differenceInDays(new Date(updates.dateDebut), new Date(tache.dateDebut));
+        if (delta !== 0) {
+          // Construire la map des successeurs : tacheId → [ids des tâches qui en dépendent]
+          const successorMap = new Map<string, string[]>();
+          for (const t of projet.taches) {
+            for (const dep of t.dependances ?? []) {
+              const list = successorMap.get(dep.precedentId) ?? [];
+              list.push(t.id);
+              successorMap.set(dep.precedentId, list);
+            }
           }
-        }
-      }
-
-      if (updates.dateDebut) {
-        // Cas drag : décaler les descendants du même delta calendaire
-        const tache = projet.taches.find((t) => t.id === tacheId);
-        if (tache?.dateDebut) {
-          const delta = differenceInDays(new Date(updates.dateDebut), new Date(tache.dateDebut));
-          if (delta !== 0) {
-            await Promise.all(
-              projet.taches
-                .filter((t) => descendants.has(t.id) && !!t.dateDebut)
-                .map((t) =>
-                  updateTacheGantt(projetId, t.id, {
-                    dateDebut: addDays(new Date(t.dateDebut!), delta).toISOString(),
-                  }),
-                ),
-            );
+          // BFS pour collecter tous les descendants transitifs
+          const descendants = new Set<string>();
+          const queue = [tacheId];
+          while (queue.length > 0) {
+            const current = queue.shift()!;
+            for (const succId of successorMap.get(current) ?? []) {
+              if (!descendants.has(succId)) {
+                descendants.add(succId);
+                queue.push(succId);
+              }
+            }
           }
-        }
-      } else if (updates.duree !== undefined) {
-        // Cas resize : recalculer les dates de début des descendants via les contraintes
-        const tache = projet.taches.find((t) => t.id === tacheId);
-        if (tache && descendants.size > 0) {
-          const projectStart = projet.dateDebut ? new Date(projet.dateDebut) : timelineStart;
-          // Simuler la tâche avec la nouvelle durée pour le calcul
-          const patchedTaches = projet.taches.map((t) =>
-            t.id === tacheId ? { ...t, duree: updates.duree } : t,
-          );
-          const sorted = sortTasksTopologically(patchedTaches);
-          const newStartDates = computeTaskStartDates(sorted, projectStart);
+          // Décaler les descendants ayant une dateDebut explicite
           await Promise.all(
             projet.taches
-              .filter((t) => descendants.has(t.id))
-              .map((t) => {
-                const newStart = newStartDates.get(t.id);
-                if (!newStart) return Promise.resolve();
-                const oldStart = t.dateDebut ? new Date(t.dateDebut) : null;
-                if (oldStart && Math.abs(differenceInDays(newStart, oldStart)) < 1) return Promise.resolve();
-                return updateTacheGantt(projetId, t.id, { dateDebut: newStart.toISOString() });
-              }),
+              .filter((t) => descendants.has(t.id) && !!t.dateDebut)
+              .map((t) =>
+                updateTacheGantt(projetId, t.id, {
+                  dateDebut: addDays(new Date(t.dateDebut!), delta).toISOString(),
+                }),
+              ),
           );
         }
       }
     }
     await updateTacheGantt(projetId, tacheId, updates);
-  }, [projets, updateTacheGantt, timelineStart]);
+  }, [projets, updateTacheGantt]);
 
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -260,7 +229,7 @@ export default function GanttPage() {
           <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">Durées en jours ouvrés</span>
         </div>
         <div className="flex items-center gap-3">
-          {!isResponsable && !projetsGantt.some((p) => p.referent?.id === user?.id) && (
+          {!isResponsable && (
             <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">Lecture seule</span>
           )}
           <span className="text-xs text-gray-400">{projetsGantt.length} projet{projetsGantt.length !== 1 ? 's' : ''}</span>
@@ -321,31 +290,6 @@ export default function GanttPage() {
 
         <div className="w-px h-4 bg-gray-300" />
 
-        {/* Pôle */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-gray-500 font-medium shrink-0">Pôle :</span>
-          <select
-            value={filterPoleId}
-            onChange={(e) => {
-              const newPoleId = e.target.value;
-              setFilterPoleId(newPoleId);
-              setFilterTagId('');
-              if (newPoleId && filterReferentId) {
-                const r = ressources.find((r) => r.id === filterReferentId);
-                if (!r?.poles?.some((rp) => rp.pole.id === newPoleId)) setFilterReferentId('');
-              }
-            }}
-            className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:border-brand-400"
-          >
-            <option value="">Tous</option>
-            {poles.map((p) => (
-              <option key={p.id} value={p.id}>{p.nom}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="w-px h-4 bg-gray-300" />
-
         {/* Référent */}
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-gray-500 font-medium shrink-0">Référent :</span>
@@ -355,8 +299,25 @@ export default function GanttPage() {
             className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:border-brand-400"
           >
             <option value="">Tous</option>
-            {referentsFiltres.map((r) => (
+            {ressources.map((r) => (
               <option key={r.id} value={r.id}>{r.nom}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="w-px h-4 bg-gray-300" />
+
+        {/* Pôle */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-gray-500 font-medium shrink-0">Pôle :</span>
+          <select
+            value={filterPoleId}
+            onChange={(e) => setFilterPoleId(e.target.value)}
+            className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:border-brand-400"
+          >
+            <option value="">Tous</option>
+            {poles.map((p) => (
+              <option key={p.id} value={p.id}>{p.nom}</option>
             ))}
           </select>
         </div>
@@ -455,28 +416,12 @@ export default function GanttPage() {
                         </svg>
                       </button>
                       <button
-                        onClick={() => canEditProjet(projet) ? setEditProjet(projet) : setDetailProjet(projet)}
+                        onClick={() => isResponsable ? setEditProjet(projet) : setDetailProjet(projet)}
                         className="min-w-0 flex-1 text-xs font-semibold text-gray-800 truncate hover:text-brand-600 transition-colors text-left block"
                       >
                         {projet.titre}
                       </button>
                     </div>
-                    {projet.avancementProjet !== undefined && (
-                      <span className="shrink-0 text-[9px] font-semibold px-1 py-0.5 rounded bg-white/60 text-gray-500 ml-1 tabular-nums">
-                        {projet.avancementProjet}%
-                      </span>
-                    )}
-                    {canEditProjet(projet) && (
-                      <button
-                        onClick={() => setEditProjet(projet)}
-                        className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-brand-600 ml-1"
-                        title="Modifier le projet"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H9v-2a2 2 0 01.586-1.414z" />
-                        </svg>
-                      </button>
-                    )}
 
                   </div>
 
@@ -606,7 +551,7 @@ export default function GanttPage() {
                       {dayColumns.map((col) => (
                         <div
                           key={col.offsetPx}
-                          className={`absolute top-0 h-full border-r z-0 ${
+                          className={`absolute top-0 h-full border-r ${
                             col.isWeekend ? 'bg-gray-100 border-gray-200' : 'border-gray-100'
                           }`}
                           style={{ left: `${col.offsetPx}px`, width: `${col.widthPx}px` }}
@@ -624,7 +569,7 @@ export default function GanttPage() {
                         projet={projet}
                         timelineStart={timelineStart}
                         dayWidth={dayWidth}
-                        draggable={canEditProjet(projet)}
+                        draggable={isResponsable}
                         onUpdate={handleProjetGanttUpdate}
                       />
 
@@ -675,7 +620,7 @@ export default function GanttPage() {
                             {dayColumns.map((col) => (
                               <div
                                 key={col.offsetPx}
-                                className={`absolute top-0 h-full border-r z-0 ${
+                                className={`absolute top-0 h-full border-r ${
                                   col.isWeekend ? 'bg-gray-100/60 border-gray-200' : 'border-gray-100'
                                 }`}
                                 style={{ left: `${col.offsetPx}px`, width: `${col.widthPx}px` }}
@@ -693,12 +638,11 @@ export default function GanttPage() {
                               tache={tache}
                               taskStart={(() => {
                                 const raw = taskStartDates.get(tache.id) ?? projectStart;
-                                const floored = projetDateDebut && raw < projetDateDebut ? projetDateDebut : raw;
-                                return minStartDate && floored < minStartDate ? minStartDate : floored;
+                                return projetDateDebut && raw < projetDateDebut ? projetDateDebut : raw;
                               })()}
                               timelineStart={timelineStart}
                               dayWidth={dayWidth}
-                              draggable={canEditProjet(projet)}
+                              draggable={isResponsable}
                               minStartDate={minStartDate}
                               onUpdate={(tacheId, updates) => handleTacheGanttUpdate(projet.id, tacheId, updates)}
                             />
