@@ -14,7 +14,7 @@ export default function AdminPage() {
 
   const TABS: { id: Tab; label: string; dgOnly?: boolean }[] = [
     { id: 'ressources', label: 'Ressources' },
-    { id: 'poles', label: 'Pôles', dgOnly: true },
+    { id: 'poles', label: 'Pôles' },
     { id: 'tags', label: 'Tags' },
     { id: 'categories', label: 'Catégories' },
     { id: 'journal', label: 'Journal' },
@@ -51,7 +51,7 @@ export default function AdminPage() {
 
         {/* Contenu */}
         {tab === 'ressources' && <AdminRessources />}
-        {tab === 'poles' && isDG && <AdminPoles />}
+        {tab === 'poles' && <AdminPoles />}
         {tab === 'tags' && <AdminCategories />}
         {tab === 'categories' && <AdminLogiciels />}
         {tab === 'journal' && <AdminJournal />}
