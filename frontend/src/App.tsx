@@ -6,6 +6,7 @@ import ProtectedRoute from './components/ProtectedRoute.tsx';
 import AdminRoute from './components/AdminRoute.tsx';
 import LoginPage from './pages/LoginPage.tsx';
 import KanbanPage from './pages/KanbanPage.tsx';
+import ListePage from './pages/ListePage.tsx';
 import GanttPage from './pages/GanttPage.tsx';
 import MesTachesPage from './pages/MesTachesPage.tsx';
 import SynthesePage from './pages/SynthesePage.tsx';
@@ -33,6 +34,7 @@ export default function App() {
         }
       >
         <Route index element={<KanbanPage />} />
+        <Route path="liste" element={<ListePage />} />
         <Route path="gantt" element={<GanttPage />} />
         <Route path="synthese" element={<SynthesePage />} />
         <Route path="mes-taches" element={<MesTachesPage />} />

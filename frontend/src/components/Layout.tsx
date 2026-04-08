@@ -51,6 +51,7 @@ export default function Layout() {
           <span className="font-bold text-gray-900 text-lg">IT Project Manager</span>
           <nav className="flex gap-1">
             {navLink('/', 'Kanban', true)}
+            {navLink('/liste', 'Liste')}
             {navLink('/gantt', 'Gantt')}
             {navLink('/synthese', 'Synthèse')}
           </nav>
