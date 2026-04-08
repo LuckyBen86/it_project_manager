@@ -30,29 +30,6 @@ const PROJET_INCLUDE = {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function computeTacheAvancement(t: any): any {
-  if (!t.avancementAutoTache) return t;
-  const total = (t.activites ?? []).reduce((s: number, a: any) => s + Number(a.duree), 0);
-  const avancement = t.duree && t.duree > 0
-    ? Math.min(100, Math.round((total / t.duree) * 100))
-    : 0;
-  return { ...t, avancementTache: avancement };
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function computeProjetAvancement(p: any): any {
-  const taches = p.taches ?? [];
-  if (!p.avancementAutoProjet) return p;
-  const totalDuree = taches.reduce((s: number, t: any) => s + (t.duree ?? 0), 0);
-  const avancement = totalDuree > 0
-    ? Math.min(100, Math.round(
-        taches.reduce((s: number, t: any) => s + (t.avancementTache ?? 0) * (t.duree ?? 0), 0) / totalDuree
-      ))
-    : 0;
-  return { ...p, avancementProjet: avancement };
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function flattenTags(obj: any): any {
   const result = {
     ...obj,
@@ -60,11 +37,9 @@ function flattenTags(obj: any): any {
     categories: (obj.categories ?? []).map((pc: any) => pc.categorie),
   };
   if (result.taches) {
-    result.taches = result.taches.map((t: any) =>
-      computeTacheAvancement({ ...t, tags: (t.tags ?? []).map((tt: any) => tt.tag) })
-    );
+    result.taches = result.taches.map((t: any) => ({ ...t, tags: (t.tags ?? []).map((tt: any) => tt.tag) }));
   }
-  return computeProjetAvancement(result);
+  return result;
 }
 
 function projetWhereForUser(userId: string, role: string, responsablePoleIds?: string[]) {
@@ -158,9 +133,19 @@ router.patch('/:id', validate(updateProjetSchema), async (req: AuthRequest & Req
 
   const dateDebutResultante = body.dateDebut !== undefined ? body.dateDebut : existing.dateDebut;
   const statutExplicite: string = body.statut ?? existing.statut;
-  const updateData = (dateDebutResultante && statutExplicite !== 'termine')
-    ? { ...body, statut: 'planifie' }
-    : body;
+
+  // Détermine le statut final :
+  // - Si dateDebut est explicitement modifiée et que le statut n'est pas "terminé" :
+  //   → "planifié" sauf si des activités existent sur ce projet (auquel cas → "en_cours")
+  // - Sinon : laisser le statut tel qu'envoyé
+  let statutFinal: string = statutExplicite;
+  if (body.dateDebut !== undefined && dateDebutResultante && statutExplicite !== 'termine') {
+    const activiteCount = await prisma.activite.count({
+      where: { tache: { projetId: req.params.id } },
+    });
+    statutFinal = activiteCount > 0 ? 'en_cours' : 'planifie';
+  }
+  const updateData = { ...body, statut: statutFinal };
 
   const projet = await prisma.projet.update({
     where: { id: req.params.id },

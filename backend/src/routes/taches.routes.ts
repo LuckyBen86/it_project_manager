@@ -16,21 +16,10 @@ const TACHE_INCLUDE = {
   tags: { select: { tag: true } },
   ressources: { include: { ressource: { select: { id: true, nom: true, email: true } } } },
   dependances: { include: { precedent: { select: { id: true, titre: true } } } },
-  activites: { select: { duree: true } },
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function computeTacheAvancement(t: any): any {
-  if (!t.avancementAutoTache) return t;
-  const total = (t.activites ?? []).reduce((s: number, a: any) => s + Number(a.duree), 0);
-  const avancement = t.duree && t.duree > 0
-    ? Math.min(100, Math.round((total / t.duree) * 100))
-    : 0;
-  return { ...t, avancementTache: avancement };
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const flattenTags = (t: any) => computeTacheAvancement({ ...t, tags: (t.tags ?? []).map((tt: any) => tt.tag) });
+const flattenTags = (t: any) => ({ ...t, tags: (t.tags ?? []).map((tt: any) => tt.tag) });
 
 async function canWriteTache(userId: string, role: string, projetId: string): Promise<boolean> {
   if (role === 'responsable' || role === 'direction_generale') return true;
@@ -247,7 +236,7 @@ router.get('/:id/activites', async (req: TacheRequest, res: Response): Promise<v
 });
 
 // POST /projets/:projetId/taches/:id/activites
-router.post('/:id/activites', requireRole('responsable'), validate(createActiviteSchema), async (req: TacheRequest, res: Response): Promise<void> => {
+router.post('/:id/activites', requireRole('responsable', 'direction_generale'), validate(createActiviteSchema), async (req: TacheRequest, res: Response): Promise<void> => {
   const auteurId = (req as AuthRequest).user!.sub;
   const tache = await prisma.tache.findFirst({ where: { id: req.params.id, projetId: req.params.projetId, deletedAt: null } });
   if (!tache) { res.status(404).json({ message: 'Tâche introuvable' }); return; }
@@ -277,7 +266,7 @@ router.post('/:id/activites', requireRole('responsable'), validate(createActivit
 });
 
 // DELETE /projets/:projetId/taches/:id/activites/:activiteId
-router.delete('/:id/activites/:activiteId', requireRole('responsable'), async (req: Request<{ projetId: string; id: string; activiteId: string }>, res: Response): Promise<void> => {
+router.delete('/:id/activites/:activiteId', requireRole('responsable', 'direction_generale'), async (req: Request<{ projetId: string; id: string; activiteId: string }>, res: Response): Promise<void> => {
   const existing = await prisma.activite.findFirst({ where: { id: req.params.activiteId, tacheId: req.params.id } });
   if (!existing) { res.status(404).json({ message: 'Activité introuvable' }); return; }
 

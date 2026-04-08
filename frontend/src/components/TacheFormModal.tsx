@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -13,8 +13,8 @@ import { useActivitesTache } from '../hooks/useActivitesTache.ts';
 import api from '../lib/api.ts';
 import TokenField from './TokenField.tsx';
 import type { Tache, Activite, TacheDependanceItem } from '../lib/types.ts';
-import DateInput from './DateInput.tsx';
 import { useAuthStore } from '../store/auth.store.ts';
+import DateInput from './DateInput.tsx';
 
 type TacheForm = {
   titre: string;
@@ -25,8 +25,6 @@ type TacheForm = {
   dateButoire?: string;
   statut: 'a_faire' | 'en_cours' | 'termine';
   ressourceIds?: string[];
-  avancementAutoTache: boolean;
-  avancementTache: number;
 };
 
 function makeTacheSchema(projetDateDebut?: string) {
@@ -39,8 +37,6 @@ function makeTacheSchema(projetDateDebut?: string) {
     dateButoire: z.string().optional(),
     statut: z.enum(['a_faire', 'en_cours', 'termine'] as const),
     ressourceIds: z.array(z.string().uuid()).optional(),
-    avancementAutoTache: z.boolean(),
-    avancementTache: z.number().int().min(0).max(100),
   });
   if (!projetDateDebut) return base;
   const minDate = projetDateDebut.slice(0, 10);
@@ -74,13 +70,12 @@ interface Props {
   tache?: Tache;
   projetDateDebut?: string;
   projetTaches?: Tache[];
-  projetReferentId?: string;
 }
 
-export default function TacheFormModal({ open, onClose, onSaved, projetId, tache, projetDateDebut, projetTaches = [], projetReferentId }: Props) {
+export default function TacheFormModal({ open, onClose, onSaved, projetId, tache, projetDateDebut, projetTaches = [] }: Props) {
   const isEdit = !!tache;
-  const user = useAuthStore((s) => s.user);
-  const canEditAvancement = user?.role === 'responsable' || user?.role === 'direction_generale' || user?.id === projetReferentId;
+  const { user } = useAuthStore();
+  const canManageActivites = user?.role === 'responsable' || user?.role === 'direction_generale';
   const { ressources } = useRessources();
   const { tags } = useTags('tache');
   const { activites, loading: loadingActivites, addActivite, deleteActivite } = useActivitesTache(projetId, tache?.id, open);
@@ -101,21 +96,12 @@ export default function TacheFormModal({ open, onClose, onSaved, projetId, tache
     formState: { errors, isSubmitting },
   } = useForm<TacheForm>({
     resolver: zodResolver(makeTacheSchema(projetDateDebut)),
-    defaultValues: { statut: 'a_faire', ressourceIds: [], tagIds: [], avancementAutoTache: true, avancementTache: 0 },
+    defaultValues: { statut: 'a_faire', ressourceIds: [], tagIds: [] },
   });
 
   const selectedTagIds = watch('tagIds') ?? [];
   const tagItems = tags.map((t) => ({ id: t.id, nom: t.nom }));
   const ressourceItems = ressources.map((r) => ({ id: r.id, nom: r.nom }));
-  const watchAvancementAuto = watch('avancementAutoTache');
-  const watchAvancementTache = watch('avancementTache');
-  const watchDuree = watch('duree');
-  const autoAvancement = useMemo(() => {
-    const total = activites.reduce((s, a) => s + a.duree, 0);
-    if (!watchDuree || watchDuree === 0) return 0;
-    return Math.min(100, Math.round((total / watchDuree) * 100));
-  }, [activites, watchDuree]);
-  const displayAvancement = watchAvancementAuto ? autoAvancement : (watchAvancementTache ?? 0);
 
   const {
     register: registerAct,
@@ -145,10 +131,8 @@ export default function TacheFormModal({ open, onClose, onSaved, projetId, tache
               dateButoire: tache.dateButoire ? tache.dateButoire.slice(0, 10) : '',
               statut: tache.statut,
               ressourceIds: tache.ressources.map((r) => r.ressource.id),
-              avancementAutoTache: tache.avancementAutoTache ?? true,
-              avancementTache: tache.avancementTache ?? 0,
             }
-          : { statut: 'a_faire', titre: '', description: '', tagIds: [], duree: undefined, dateDebut: '', dateButoire: '', ressourceIds: [], avancementAutoTache: true, avancementTache: 0 },
+          : { statut: 'a_faire', titre: '', description: '', tagIds: [], duree: undefined, dateDebut: '', dateButoire: '', ressourceIds: [] },
       );
     }
   }, [open, tache, reset]);
@@ -185,23 +169,17 @@ export default function TacheFormModal({ open, onClose, onSaved, projetId, tache
   };
 
   const onSubmit = async (data: TacheForm) => {
-    const { avancementAutoTache, avancementTache, ...rest } = data;
-    const base = {
-      ...rest,
+    const payload = {
+      ...data,
       tagIds: data.tagIds ?? [],
       duree: data.duree,
       dateDebut: data.dateDebut ? new Date(data.dateDebut).toISOString() : undefined,
       dateButoire: data.dateButoire ? new Date(data.dateButoire).toISOString() : undefined,
     };
     if (isEdit) {
-      const payload = {
-        ...base,
-        avancementAutoTache,
-        avancementTache: avancementAutoTache ? undefined : avancementTache,
-      };
       await api.patch(`/projets/${projetId}/taches/${tache.id}`, payload);
     } else {
-      await api.post(`/projets/${projetId}/taches`, base);
+      await api.post(`/projets/${projetId}/taches`, payload);
     }
     onSaved();
     onClose();
@@ -368,41 +346,6 @@ export default function TacheFormModal({ open, onClose, onSaved, projetId, tache
               </p>
             </div>
 
-            {/* Avancement tâche */}
-            <div className="rounded-lg bg-gray-50 border border-gray-100 px-3 py-2.5 space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold">% avancement tâche</p>
-                <label className={`flex items-center gap-1.5 ${canEditAvancement ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
-                  <span className="text-[10px] text-gray-400">Auto</span>
-                  <input
-                    type="checkbox"
-                    className="w-3.5 h-3.5 accent-brand-600"
-                    disabled={!canEditAvancement}
-                    {...register('avancementAutoTache')}
-                  />
-                </label>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-1.5">
-                <div
-                  className={`h-1.5 rounded-full transition-all ${displayAvancement >= 100 ? 'bg-green-500' : 'bg-brand-500'}`}
-                  style={{ width: `${displayAvancement}%` }}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-gray-800">{displayAvancement}%</p>
-                {!watchAvancementAuto && (
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    disabled={!canEditAvancement}
-                    className={`w-16 text-xs text-right border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:border-brand-400 ${!canEditAvancement ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                    {...register('avancementTache', { setValueAs: (v: string) => v === '' ? 0 : Math.min(100, Math.max(0, Number(v))) })}
-                  />
-                )}
-              </div>
-            </div>
-
             <div className="flex items-center justify-between -mx-1 px-3 py-2 bg-gray-100 rounded-lg border border-gray-200">
               <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
                 <span className="w-1 h-3.5 bg-brand-500 rounded-full inline-block" />
@@ -411,13 +354,15 @@ export default function TacheFormModal({ open, onClose, onSaved, projetId, tache
                   <span className="font-normal text-gray-400 normal-case">{activites.length}</span>
                 )}
               </h3>
-              <button
-                type="button"
-                onClick={() => setShowActiviteForm((v) => !v)}
-                className="text-xs px-3 py-1.5 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors font-medium"
-              >
-                {showActiviteForm ? 'Annuler' : '+ Ajouter'}
-              </button>
+              {canManageActivites && (
+                <button
+                  type="button"
+                  onClick={() => setShowActiviteForm((v) => !v)}
+                  className="text-xs px-3 py-1.5 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors font-medium"
+                >
+                  {showActiviteForm ? 'Annuler' : '+ Ajouter'}
+                </button>
+              )}
             </div>
 
             {/* Formulaire inline ajout activité */}
@@ -500,16 +445,18 @@ export default function TacheFormModal({ open, onClose, onSaved, projetId, tache
                         <td className="px-3 py-2 text-gray-700 text-right font-medium whitespace-nowrap">{act.duree} j</td>
                         <td className="px-3 py-2 text-gray-500 max-w-[90px] truncate" title={act.ressource.nom}>{act.ressource.nom}</td>
                         <td className="px-2 py-2">
-                          <button
-                            type="button"
-                            onClick={() => setDeleteActiviteTarget(act)}
-                            title="Supprimer"
-                            className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
+                          {canManageActivites && (
+                            <button
+                              type="button"
+                              onClick={() => setDeleteActiviteTarget(act)}
+                              title="Supprimer"
+                              className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}

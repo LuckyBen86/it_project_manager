@@ -22,47 +22,49 @@ router.get('/', async (_req, res: Response): Promise<void> => {
   res.json(activites);
 });
 
-// POST /activites — responsable uniquement
-router.post('/', requireRole('responsable'), validate(createActiviteSchema), async (req: AuthRequest, res: Response): Promise<void> => {
+// POST /activites — responsable ou direction_generale
+router.post('/', requireRole('responsable', 'direction_generale'), validate(createActiviteSchema), async (req: AuthRequest, res: Response): Promise<void> => {
   const ressource = await prisma.ressource.findUnique({ where: { id: req.body.ressourceId } });
   if (!ressource) { res.status(404).json({ message: 'Ressource introuvable' }); return; }
-
-  // Si l'activité est rattachée à une tâche, valider la date et préparer les transitions de statut
-  let tache: { id: string; titre: string; statut: string; projetId: string; dateDebut: Date | null } | null = null;
-  if (req.body.tacheId) {
-    tache = await prisma.tache.findUnique({
-      where: { id: req.body.tacheId },
-      select: { id: true, titre: true, statut: true, projetId: true, dateDebut: true },
-    });
-    if (tache?.dateDebut && new Date(req.body.date) < new Date(tache.dateDebut)) {
-      res.status(400).json({ message: 'La date de l\'activité ne peut pas être antérieure au début de la tâche' }); return;
-    }
-  }
 
   const activite = await prisma.activite.create({
     data: req.body,
     include: ACTIVITE_INCLUDE,
   });
 
-  if (tache && req.body.duree > 0) {
-    // Passer la tâche de "a_faire" à "en_cours"
-    if (tache.statut === 'a_faire') {
-      await prisma.tache.update({ where: { id: tache.id }, data: { statut: 'en_cours' } });
-      await logAction({ auteurId: req.user!.sub, action: 'STATUT_TACHE', entityId: tache.id, entityTitre: tache.titre, ancienneValeur: STATUT_LABELS_FR['a_faire'], nouvelleValeur: STATUT_LABELS_FR['en_cours'] });
-    }
-    // Passer le projet de "planifie" à "en_cours"
-    const projet = await prisma.projet.findUnique({ where: { id: tache.projetId }, select: { id: true, titre: true, statut: true } });
-    if (projet?.statut === 'planifie') {
-      await prisma.projet.update({ where: { id: projet.id }, data: { statut: 'en_cours' } });
-      await logAction({ auteurId: req.user!.sub, action: 'STATUT_PROJET', entityId: projet.id, entityTitre: projet.titre, ancienneValeur: STATUT_LABELS_FR['planifie'], nouvelleValeur: STATUT_LABELS_FR['en_cours'] });
+  // Si l'activité est rattachée à une tâche avec du temps, passer le projet de "planifie" à "en_cours"
+  if (req.body.tacheId && req.body.duree > 0) {
+    const tache = await prisma.tache.findUnique({
+      where: { id: req.body.tacheId },
+      select: { projetId: true },
+    });
+    if (tache?.projetId) {
+      const projet = await prisma.projet.findUnique({
+        where: { id: tache.projetId },
+        select: { id: true, titre: true, statut: true },
+      });
+      if (projet?.statut === 'planifie') {
+        await prisma.projet.update({
+          where: { id: projet.id },
+          data: { statut: 'en_cours' },
+        });
+        await logAction({
+          auteurId: req.user!.sub,
+          action: 'STATUT_PROJET',
+          entityId: projet.id,
+          entityTitre: projet.titre,
+          ancienneValeur: STATUT_LABELS_FR['planifie'],
+          nouvelleValeur: STATUT_LABELS_FR['en_cours'],
+        });
+      }
     }
   }
 
   res.status(201).json(activite);
 });
 
-// PATCH /activites/:id — responsable uniquement
-router.patch('/:id', requireRole('responsable'), validate(updateActiviteSchema), async (req: Request<{ id: string }>, res: Response): Promise<void> => {
+// PATCH /activites/:id — responsable ou direction_generale
+router.patch('/:id', requireRole('responsable', 'direction_generale'), validate(updateActiviteSchema), async (req: Request<{ id: string }>, res: Response): Promise<void> => {
   const existing = await prisma.activite.findUnique({ where: { id: req.params.id } });
   if (!existing) { res.status(404).json({ message: 'Activité introuvable' }); return; }
 
@@ -74,8 +76,8 @@ router.patch('/:id', requireRole('responsable'), validate(updateActiviteSchema),
   res.json(activite);
 });
 
-// DELETE /activites/:id — responsable uniquement
-router.delete('/:id', requireRole('responsable'), async (req: Request<{ id: string }>, res: Response): Promise<void> => {
+// DELETE /activites/:id — responsable ou direction_generale
+router.delete('/:id', requireRole('responsable', 'direction_generale'), async (req: Request<{ id: string }>, res: Response): Promise<void> => {
   const existing = await prisma.activite.findUnique({ where: { id: req.params.id } });
   if (!existing) { res.status(404).json({ message: 'Activité introuvable' }); return; }
 

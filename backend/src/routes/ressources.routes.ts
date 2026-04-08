@@ -76,7 +76,7 @@ router.patch('/:id', requireRole('responsable', 'direction_generale'), validate(
         poles: {
           deleteMany: requesterRole === 'direction_generale'
             ? {}
-            : { poleId: { notIn: requesterPoleIds } },
+            : { poleId: { in: requesterPoleIds } },
           create: (requesterRole === 'responsable'
             ? requesterPoleIds
             : poleIds as string[]
