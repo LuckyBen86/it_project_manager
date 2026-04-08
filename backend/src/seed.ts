@@ -15,7 +15,16 @@ async function main() {
   try {
     const existing = await prisma.ressource.findUnique({ where: { email: adminEmail } });
     if (existing) {
-      console.log(`Seed : compte admin "${adminEmail}" déjà présent, skip.`);
+      // Garantir que l'admin a toujours le rôle direction_generale
+      if (existing.role !== 'direction_generale') {
+        await prisma.ressource.update({
+          where: { email: adminEmail },
+          data: { role: 'direction_generale' },
+        });
+        console.log(`Seed : rôle admin "${adminEmail}" restauré → direction_generale`);
+      } else {
+        console.log(`Seed : compte admin "${adminEmail}" déjà présent, skip.`);
+      }
       return;
     }
 
