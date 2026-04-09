@@ -1,7 +1,7 @@
 # Documentation Fonctionnelle — IT Project Manager
 
 > Source de vérité fonctionnelle pour toute reconstruction de l'application.
-> Le fichier `../cdc_fonctionnel.md` contient les règles de gestion formelles (RG-*).
+> Le fichier `00-regles-gestion.md` contient les règles de gestion formelles (RG-*).
 > Ce fichier décrit les **vues**, les **flux utilisateur** et les **comportements UI** non couverts par les RG.
 
 ---
@@ -119,9 +119,13 @@ Slide-over latéral ouvert au clic sur une carte Kanban.
 ### 3.5 Page Mes Tâches (`/mes-taches`)
 Tâches assignées à l'utilisateur connecté, quelle que soit son rôle.
 
-**Affichage :** regroupement par statut (`à faire`, `en cours`, `terminé`)
+La page propose deux vues basculables via un toggle :
 
-**Actions :**
+**Vue Liste** (défaut) — regroupement par statut (`à faire`, `en cours`, `terminé`)
+
+**Vue Planning** — affiche uniquement les tâches **non terminées** (`à faire`, `en cours`) positionnées sur un axe de temps (mini-Gantt personnel). Seules les tâches ayant une `dateDebut` et une `duree` sont affichées. Les tâches sans ces données apparaissent dans un encadré "Sans planification" sous le planning.
+
+**Actions disponibles dans les deux vues :**
 - Ajouter une activité sur une tâche (si tâche non terminée)
 - Modifier une activité existante (si auteur = utilisateur courant)
 - Changer le statut de la tâche (si assigné)
